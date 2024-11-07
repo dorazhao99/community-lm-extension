@@ -1,6 +1,7 @@
 import { sendMessage } from "webext-bridge";
 import { Tabs } from "webextension-polyfill";
 import browser from "webextension-polyfill";
+import moduleServices from '~/services/moduleServices';
 
 // only on dev mode
 if (import.meta.hot) {
@@ -47,20 +48,39 @@ browser.tabs.onActivated.addListener(async ({ tabId }) => {
   );
 });
 
-browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   console.log('request in background', request)
   if (request.type === 'save_module') {
-    let queryOptions = {active: true, currentWindow: true};
-    browser.tabs.query(queryOptions)
-    .then((tabs) => {
-      console.log(tabs)
-        browser.tabs.sendMessage(tabs[0].id, request)
-        .then(response => {
-          console.log(response)
+    // let queryOptions = {active: true, currentWindow: true};
+    const knowledge = await moduleServices.updateKnowledge(request.data.checked, request.data.modules)
+    console.log('knowledge', knowledge)
+    if (knowledge && knowledge["response"]) {
+      console.log('Knowledge', knowledge)
+      const response = JSON.parse(knowledge["response"])
+      console.log("response", response)
+      let knowledgeDict = {}
+
+      Object.keys(response).forEach((key) => {
+        console.log(key, response[key].knowledge)
+        knowledgeDict[key] = response[key].knowledge.join("\n")
+      })
+
+
+      browser.storage.local.set(knowledgeDict).then(() => {
+        console.log("Value is set", knowledgeDict);
+        return new Promise((resolve, reject) => {
+          resolve(null)
         })
-    })
-    .catch((err) => {
-        console.log(err);
+      });
+    }
+  } else if (request.type === 'popup_open') {
+    console.log('Oopen Popup')
+    return new Promise((resolve, reject) => {
+      moduleServices
+        .fetchModules()
+        .then((response) => {
+          resolve(response);
+        });
     });
   }
 });
@@ -77,3 +97,32 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
 //     };
 //   }
 // });
+
+    // return new Promise((resolve, reject) => {
+    //   browser.tabs.query(queryOptions)
+    //   .then((tabs) => {
+    //         console.log('Knowledge2', knowledge, knowledge.response)
+    //         Promise.all([browser.tabs.sendMessage(tabs[0].id!, {
+    //           type: "send_knowledge", 
+    //           data: {
+    //             knowledge: knowledge
+    //           }
+    //         })])
+    //         .then(response => {
+    //           resolve(null)
+    //         })
+    //   })
+    // })
+
+    // moduleServices
+    //   .updateKnowledge(request.data.checked, request.data.modules)
+    //   .then((response) => {
+    //     console.log(response)
+    //     browser.tabs.query(queryOptions)
+    //     .then((tabs) => {
+    //           browser.tabs.sendMessage(tabs[0].id, request)
+    //           .then(response => {
+    //             console.log(response)
+    //           })
+    //     })
+    //   }); 

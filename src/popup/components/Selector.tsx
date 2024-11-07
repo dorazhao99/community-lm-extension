@@ -1,26 +1,51 @@
-import * as React from 'react';
+import React, { useState, useEffect } from 'react';
 import Grid from '@mui/material/Grid2';
 import { Module } from './Module' 
 import { TabList, TabContext, TabPanel} from '@mui/lab';
-import { Typography, Box, Tab, Button, InputBase, IconButton } from '@mui/material';
+import { Typography, Box, Paper, Tab, Button, InputBase, IconButton } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import browser from "webextension-polyfill";
 
-export function Selector() {
-  const [value, setValue] = React.useState('1');
+interface Checked {
+    [key: string]: boolean;
+}
 
-  const handleChange = (event, newValue) => {
-    setValue(newValue);
-  };
+export function Selector(props) {
+    const [value, setValue] = useState('1');
+    const [checked, setChecked] = useState({})
 
-  const sendMessage = () => {
-    browser.runtime
-    .sendMessage({
-        type: "save_module",
-        data: "Data"
-    })
-    .then(() => {
-        console.log("Modules saved")
-    });
-  }
+    useEffect(() => {
+        browser.storage.sync.get("checkedModules")
+        .then((result) => {
+            // If undefined, send a message to read from the database
+            console.log('checkedModules', result)
+            setChecked(result.checkedModules)
+            // call to API to update user's selected modules but do not await (background call)
+        })
+    }, [])
+
+    const handleChange = (event, newValue) => {
+        setValue(newValue);
+    };
+
+    const handleChecked = (event) => {
+        let updatedChecked = {...checked} 
+        updatedChecked[event.target.id.toString()] = event.target.checked 
+        setChecked(updatedChecked)
+        console.log('checked', checked)
+    }
+
+    const sendMessage = () => {
+        browser.runtime.sendMessage({
+            type: "save_module",
+            data: {checked: checked, modules: props.modules}
+        })
+        .then(() => {
+            browser.storage.sync.set({checkedModules: checked})
+            console.log("Modules saved")
+        });
+    }
+
 
   return (
     <Box sx={{ typography: 'body1', padding: '1em 1em' }}>
@@ -31,12 +56,45 @@ export function Selector() {
               <Tab label="Modules" value="2" />
             </TabList>
           </Box>
-          <TabPanel value="2">    
-            <Box sx={{ height: '60vh', overflowY: 'auto'}}>
-                <Module title="Test" description="Test"/>
-            </Box>
+          <TabPanel value="2" sx={{padding: '12px', height: "75vh"}}>  
+            <Box sx={{width: '100%', margin: '0 0 0 4px'}}>
+                    <Grid container alignItems={"center"}>
+                        <Grid size={2}>
+                            <SearchIcon />
+                        </Grid>
+                        <Grid size={10}>
+                            <InputBase
+                                placeholder="Search Modules"
+                                inputProps={{ 'aria-label': 'Search Modules' }}
+                                onChange = {props.filterItems}
+                            />
+                        </Grid>
+                    </Grid> 
+            </Box> 
+            <Grid container sx={{ maxHeight: '70vh', overflowY: 'scroll'}}>
+                {
+                    props.modules.map((module, idx) => {
+                    return(
+                        <Grid size={12} sx={{margin: '0 0 0 4px'}}>
+                            <Module 
+                                checked={checked[module.id] ? checked[module.id] : false}
+                                onChange={handleChecked}
+                                id={module.id}
+                                title={module.name}
+                                description={module.description}
+                                link={module.gh_page}
+                                access={module.access}
+                            />
+                        </Grid>
+                    )
+                    })
+                }
+                {console.log('Checked', checked)}
+
+                {console.log(props.modules)}
+            </Grid>
         </TabPanel>
-        <TabPanel value="1">
+        <TabPanel value="1" sx={{padding: '12px', height: "75vh"}}>
             <Box sx={{ height: '55vh', overflowY: 'auto'}}>
                 Community
             </Box>

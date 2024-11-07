@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import Grid from '@mui/material/Grid2';
 import Checkbox from '@mui/joy/Checkbox';
-
 import GitHubIcon from '@mui/icons-material/GitHub';
 import GroupIcon from '@mui/icons-material/Group';
 import LockIcon from '@mui/icons-material/Lock';
 import { Typography, Paper, Card, CardContent, IconButton, Chip, } from '@mui/material';
+import './module.css'; 
 
 export function Module(props) {
     const handleClick = () => {
@@ -15,19 +15,14 @@ export function Module(props) {
 
 
     return (
-        <Card className="module">
+        <Paper className="module">
             <Grid container spacing={1} alignItems="center" >
                 <Grid size={1}>
-                    <Checkbox id={props.id} variant="solid"/>
+                    <Checkbox id={props.id} variant="solid" checked={props.checked} onChange={props.onChange}/>
                 </Grid>
-                <Grid size={6} className="info">
-                    <Typography variant="h6" align="left">
-                        <strong>{props.title}</strong>
-                        <IconButton type="button" aria-label="github">
-                            <GitHubIcon onClick={handleClick}/>
-                        </IconButton>
-                        <Chip icon={<GroupIcon/>} label={Math.floor(2)}/> 
-                             
+                <Grid size={10} className="info">
+                    <Typography variant="body" align="left">
+                        <strong>{props.title}</strong>                           
                     </Typography>
                     <Typography align="left" variant="body1">
                         {props.description}
@@ -37,7 +32,12 @@ export function Module(props) {
                     {props.access === 1 ? <div/> : <LockIcon/>}
                 </Grid>
             </Grid>
-        </Card>
+            {/* <Grid container>
+                <IconButton type="button" aria-label="github">
+                    <GitHubIcon onClick={handleClick}/>
+                </IconButton>  
+            </Grid> */}
+        </Paper>
     );
 
 
