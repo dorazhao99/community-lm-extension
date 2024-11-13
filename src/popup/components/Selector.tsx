@@ -19,7 +19,9 @@ export function Selector(props) {
         .then((result) => {
             // If undefined, send a message to read from the database
             console.log('checkedModules', result)
-            setChecked(result.checkedModules)
+            if (result.checkedModules) {
+                setChecked(result.checkedModules)
+            }
             // call to API to update user's selected modules but do not await (background call)
         })
     }, [])
@@ -56,7 +58,7 @@ export function Selector(props) {
               <Tab label="Modules" value="2" />
             </TabList>
           </Box>
-          <TabPanel value="2" sx={{padding: '12px', height: "75vh"}}>  
+          <TabPanel value="2" sx={{padding: '12px', height: "67vh"}}>  
             <Box sx={{width: '100%', margin: '0 0 0 4px'}}>
                     <Grid container alignItems={"center"}>
                         <Grid size={2}>
@@ -71,7 +73,7 @@ export function Selector(props) {
                         </Grid>
                     </Grid> 
             </Box> 
-            <Grid container sx={{ maxHeight: '70vh', overflowY: 'scroll'}}>
+            <Grid container sx={{ maxHeight: '60vh', overflowY: 'scroll'}}>
                 {
                     props.modules.map((module, idx) => {
                     return(
@@ -94,7 +96,7 @@ export function Selector(props) {
                 {console.log(props.modules)}
             </Grid>
         </TabPanel>
-        <TabPanel value="1" sx={{padding: '12px', height: "75vh"}}>
+        <TabPanel value="1" sx={{padding: '12px', height: "67vh"}}>
             <Box sx={{ height: '55vh', overflowY: 'auto'}}>
                 Community
             </Box>

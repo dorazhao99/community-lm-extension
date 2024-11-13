@@ -59,6 +59,36 @@ function editString(inputString, originalMessage) {
 
 }
 
+function getMsgId(inputString) {
+  const lines = inputString.split('\n');
+  let id = ""
+  lines.forEach(line => {
+    try {
+      if (line.startsWith('data: ')) {
+          // Extract the JSON part
+          const jsonString = line.substring(6).trim(); // Remove 'data: ' and trim spaces
+          // Parse the JSON
+          const jsonObject = JSON.parse(jsonString);
+  
+          // Check and modify the parts array if it exists
+          if (jsonObject.v && jsonObject.v.message) {
+            console.log('JSON Object', jsonObject.v)
+            if (jsonObject.v.message.author) {
+              const author = jsonObject.v.message.author.role
+              if (author === 'assistant') {
+                id = jsonObject.v.message.id
+                return id
+              }
+            }
+          }
+      } 
+    } catch {
+      console.log("error")
+    }
+  })
+  return id;
+}
+
 
 function sanitizeResponse(response) {
   console.log('Response', response)
@@ -134,7 +164,18 @@ window.fetch = async (...args) => {
           console.log('original', originalPrompt)
           const chunk = decoder.decode(value, { stream: true });
           const editedChunk = editString(chunk, originalPrompt)
-          console.log('edited chunk', editedChunk)
+          const messageId = getMsgId(chunk)
+          console.log('Message ID', messageId)
+          if (messageId.length > 0) {
+            console.log("Found ID")
+            const event = new CustomEvent("add_chip", {
+              detail: {
+                  id: messageId,
+                  modules: ["547"]
+              }
+            });
+            window.dispatchEvent(event);
+          }
           // Encode the modified text back to a Uint8Array
           const modifiedValue = new TextEncoder().encode(editedChunk);
 

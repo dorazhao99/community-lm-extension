@@ -1,11 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import "../styles";
-import { OptionsApp } from "./Options";
+import { Profile } from "./Profile";
 
 ReactDOM.render(
   <React.StrictMode>
-    <OptionsApp />
+    <Profile />
   </React.StrictMode>,
   document.getElementById("root")
 );

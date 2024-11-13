@@ -12,9 +12,9 @@ class EventsManager {
 
     static enableDebug = false;
 
-    static renderedTweetHistory = new Set();
+    static renderedMsgsHistory = new Set();
 
-    static visualisedTweets = new Set();
+    static visualisedMsgs= new Set();
 
     static scrolled = true;
 
@@ -42,37 +42,62 @@ class EventsManager {
 
         EventsManager.statusTimer = window.setInterval(function () {
 
-            // If no scroll ignore
-            if (!document.URL.endsWith("home") || !EventsManager.scrolled)
-                return;
+            // let tweets = $("article");
+            // // console.log(tweets) //tweets.children[1].children[0]
+            // // If there are tweets (useful for the first time when tweets are not rendered)
+            // if (tweets && tweets.length > 0) {
+            //     let msgDOMReferences = {}
+            //     let renderedMsgs = new Set()
+            //     for (let t = 0; t < tweets.length; t++) {
+            //         console.log(tweets[t], tweets[t].innerText)
+            //         const children = tweets[t].children[1].children[0]
+            //         let divs = $("div[data-message-author-role*=assistant]", children)
+            //         // console.log("children", divs)
 
-            let tweets = $("article");
-            // If there are tweets (useful for the first time when tweets are not rendered)
-            if (tweets && tweets.length > 0) {
-                let tweetsDOMReferences = {}
-                let renderedTweets = new Set()
-                for (let t = 0; t < tweets.length; t++) {
-                    let links = $("a[href*=status]", tweets[t]);
-                    if (links)
-                        for (let i = 0; i < links.length; i++) {
-                            let tweet_id = links[i].href.match(EventsManager.tweetIdRegex);
-                            if (tweet_id!=null && tweet_id.length>0) {
-                                renderedTweets.add(tweet_id[1])
-                                tweetsDOMReferences[tweet_id[1]] = tweets[t];
-                            }
-                        }
-                }
-                if (renderedTweets.size > 0 && !eqSet(EventsManager.previousRenderGroup, renderedTweets)) {
-                    this.onCheckRenderStatus(renderedTweets);
-                    EventsManager.previousRenderGroup = renderedTweets;
-                    for (const [tweetID, domElement] of Object.entries(tweetsDOMReferences)) {
-                        this.onTweetAvailable(tweetID, domElement);
-                    }
-                }
-                EventsManager.scrolled = false;
-            }
-
-        }.bind(this), 800);
+            //         if (divs && divs.length > 0) {
+            //             // console.log('Divs 0 Events', divs);
+            //             if (divs[0].textContent.length > 0 && divs[0].textContent.toLowerCase() !== '&zerowidthspace;') {
+            //                 const msg_id = divs[0].dataset.messageId
+            //                 if (!renderedMsgs.has(msg_id)) {
+            //                     // console.log('Message ID', msg_id)
+            //                     renderedMsgs.add(msg_id)
+            //                     msgDOMReferences[msg_id] = divs[0]
+            //                 }
+            //             }
+            //         }
+            //         if (renderedMsgs.size > 0 ) {
+            //             this.onCheckRenderStatus(renderedMsgs);
+            //             EventsManager.previousRenderGroup = renderedMsgs;
+            //             for (const [msgId, domElement] of Object.entries(msgDOMReferences)) {
+            //                 // console.log('message Id', msgId, domElement)
+            //                 this.onMsgAvailable(msgId, domElement);
+            //             }
+            //         }
+            //     }
+            // }
+            //     // for (let t = 0; t < tweets.length; t++) {
+            //     //     console.log(tweets[t], tweets[t].innerText)
+            //     //     const children = tweets[t].children[1].children[0]
+            //     //     console.log("children", children)
+            //     //     let divs = $("div[class*=agent]", children);
+            //     //     console.log("Search agent", $("div[data-message-author-role*=assistant]", children))
+            //     //     if (divs && divs.length > 0) {
+            //     //         const msg_id = tweets[t].dataset.testid
+            //     //         renderedMsgs.add(msg_id)
+            //     //         msgDOMReferences[msg_id] = divs[0]
+            //     //         console.log('Check', msgDOMReferences, divs)
+            //     //     }
+            //     // }
+            //     // if (renderedMsgs.size > 0 && !eqSet(EventsManager.previousRenderGroup, renderedMsgs)) {
+            //     //     this.onCheckRenderStatus(renderedMsgs);
+            //     //     EventsManager.previousRenderGroup = renderedMsgs;
+            //     //     for (const [msgId, domElement] of Object.entries(msgDOMReferences)) {
+            //     //         console.log('message Id', msgId, domElement)
+            //     //         this.onMsgAvailable(msgId, domElement);
+            //     //     }
+            //     // }
+            //     EventsManager.scrolled = false;
+        }, 600);
 
 
         window.addEventListener("FavoriteTweet", this.onFavoriteTweet, false);
@@ -95,23 +120,24 @@ class EventsManager {
         client.logEvent("FavoriteTweet", data.detail);
     }
 
-    onTweetAvailable(tweetId, tweetDOM) {
+    onMsgAvailable(id, dom) {
+        console.log('msg available')
 
-        let currentTweet = $(tweetDOM)
-        window.addEventListener("FeedScroll", function (evt) {
-            if (!EventsManager.visualisedTweets.has(tweetId) && currentTweet.isInViewport()) {
-                console.log("TweetVisible", tweetId);
-                client.logEvent("TweetVisible", {tweetId: tweetId});
+        // let currentTweet = $(dom)
+        // window.addEventListener("FeedScroll", function (evt) {
+        //     if (!EventsManager.visualisedTweets.has(tweetId) && currentTweet.isInViewport()) {
+        //         console.log("TweetVisible", tweetId);
+        //         client.logEvent("TweetVisible", {tweetId: tweetId});
 
-                EventsManager.visualisedTweets.add(tweetId);
-            }
-        }, false);
+        //         EventsManager.visualisedTweets.add(tweetId);
+        //     }
+        // }, false);
 
-        const event = new CustomEvent('tweetAvailable',
+        const event = new CustomEvent('msgAvailable',
         {
           detail: {
-            tweetId: tweetId,
-            tweetDOM: tweetDOM
+            id: id,
+            DOM: dom
           },
         })
 
@@ -120,15 +146,15 @@ class EventsManager {
 
 
     onCheckRenderStatus(ids) {
-        console.log("Rendered tweets:", ids);
-        let newTweets = []
+        console.log("Rendered messages:", ids);
+        let newMsgs = []
         for (let i of ids)
-            if (!EventsManager.renderedTweetHistory.has(i)) {
-                newTweets.push(i);
-                EventsManager.renderedTweetHistory.add(i);
+            if (!EventsManager.renderedMsgsHistory.has(i)) {
+                newMsgs.push(i);
+                EventsManager.renderedMsgsHistory.add(i);
             }
-        if (newTweets.length > 0)
-            client.logEvent("RenderedTweets", {ids: newTweets});
+        if (newMsgs.length > 0)
+            client.logEvent("RenderedTweets", {ids: newMsgs});
     }
 
     onScroll(e) {

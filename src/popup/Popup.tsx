@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Selector } from './components/Selector';
 import { Box } from "@mui/material";
+import { Footer } from './components/Footer';
 // import { Header } from './components/Header';
 
 export const Popup = () => {
@@ -34,7 +35,7 @@ export const Popup = () => {
         modules={modules}
         filterItems={filterItems}
       />
-      {/* <Footer/> */}
+      <Footer/>
     </Box>
   )
 };
