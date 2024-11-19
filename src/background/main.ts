@@ -2,7 +2,7 @@ import { sendMessage } from "webext-bridge";
 import { Tabs } from "webextension-polyfill";
 import browser from "webextension-polyfill";
 import moduleServices from '~/services/moduleServices';
-
+import userServices from '~/services/userServices';
 // only on dev mode
 if (import.meta.hot) {
   // @ts-expect-error for background HMR
@@ -15,7 +15,7 @@ browser.runtime.onInstalled.addListener(({ reason }): void => {
   console.log('Extension installed')
   if (reason === 'install') {
     browser.tabs.update({
-      url: 'https://chatgpt.com',
+      url: 'http://localhost:3000/download',
     })
   }
 })
@@ -48,6 +48,19 @@ browser.tabs.onActivated.addListener(async ({ tabId }) => {
   );
 });
 
+// listen for messages from web app
+browser.runtime.onMessageExternal.addListener(async (message, sender, sendResponse) => {
+  console.log("Message", message)
+  if (message.type === 'sign_in') {
+    console.log('Sign in 2', message.user)
+    await browser.storage.sync.set({"uid": message.user})
+  } else if (message.type === 'sign_out') {
+    console.log('Sign out')
+    await browser.storage.sync.remove("uid")
+  }
+  return true
+});
+
 browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   console.log('request in background', request)
   if (request.type === 'save_module') {
@@ -62,11 +75,14 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 
       Object.keys(response).forEach((key) => {
         console.log(key, response[key].knowledge)
-        knowledgeDict[key] = response[key].knowledge.join("\n")
+        knowledgeDict[key] = {
+          knowledge: response[key].knowledge.knowledge.join("\n"),
+          link: response[key].link
+        }
       })
 
 
-      browser.storage.local.set(knowledgeDict).then(() => {
+      browser.storage.local.set({"knowledge": knowledgeDict}).then(() => {
         console.log("Value is set", knowledgeDict);
         return new Promise((resolve, reject) => {
           resolve(null)
@@ -74,16 +90,59 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       });
     }
   } else if (request.type === 'popup_open') {
-    console.log('Oopen Popup')
+    console.log('Open Popup')
     return new Promise((resolve, reject) => {
       moduleServices
         .fetchModules()
         .then((response) => {
-          resolve(response);
+          const modules = response
+          moduleServices
+            .fetchCommunities()
+            .then((response) => {
+              console.log('Communities', response)
+              const communities = response
+              resolve({modules: modules, communities: communities});
+            })
+          // userServices
+          // .fetchUserModules("test")
+          // .then((userResponse) => {
+          //   console.log('user response', userResponse)
+          //   const checked = userResponse.response.checked ? userResponse.response.checked : {}
+          //   resolve({modules: modules, checked: checked});
+          // })
+          // .catch((error) => {
+          //   console.error(error)
+          //   resolve({modules: modules, checked: {}});
+          // })
+        })
+        .catch((error) => {
+          console.error(error)
+          resolve({modules: []});
         });
     });
   }
+  else if (request.type === 'sign_in') {
+      console.log("open sign in")
+      browser.tabs.create({ url: "http://localhost:3000/login" });
+      return new Promise((resolve, reject) => {
+        resolve(null)
+      })
+  }
 });
+
+// return new Promise((resolve, reject) => {
+//   moduleServices
+//     .fetchModules()
+//     .then((response) => {
+//       const modules = response
+//       userServices
+//       .fetchUserModules("test")
+//       .then((response) => {
+//         const checked = response.checked ? response.checked : {}
+//         resolve(modules);
+//       })
+//     });
+// });
 
 // onMessage("get-current-tab", async () => {
 //   try {
