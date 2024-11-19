@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { Selector } from './components/Selector';
-import { Box } from "@mui/material";
+import Box from "@mui/material/Box";
+import CircularProgress from '@mui/material/CircularProgress';
+import Typography from "@mui/material/Typography";
+import Grid from '@mui/material/Grid2';
 import { Footer } from './components/Footer';
+import { Login } from "./components/Login";
+import { ThemeProvider } from "@mui/material";
+import theme from "./theme";
 // import { Header } from './components/Header';
 
 export const Popup = () => {
   const [modules, setModules] = useState([])
+  const [communities, setCommunities] = useState([])
   const [allModules, setAllModules] = useState([])
-
-
+  const [userChecked, setChecked] = useState({})
+  const [user, setUser] = useState("")
+  const [isLoading, setLoading] = useState(true)
   const filterItems = (event) => {
     const searchTerm = event.target.value
     const filteredModules = allModules.filter(module =>
@@ -18,24 +26,77 @@ export const Popup = () => {
     setModules(filteredModules)
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    browser.runtime.sendMessage({ type: 'popup_open' })
-    .then(response => {
-      console.log('Response in popup', response)
-      if (response.success) {
-        setModules(response.response)
-        setAllModules(response.response)
-      }
-    })
+  document.addEventListener('DOMContentLoaded', async(event) => {
+    const syncData = await browser.storage.sync.get("uid")
+    const uid = syncData?.uid
+    setUser(uid)
+
+    if (uid) {
+      browser.runtime.sendMessage({ type: 'popup_open' })
+      .then(response => {
+        console.log('Response in popup', response, response.checked)
+        if (response.modules.success) {
+          setModules(response.modules.response)
+          setAllModules(response.modules.response)
+        }
+        if (response.communities.success) {
+          setCommunities(response.communities.response)
+        }
+        if (response.checked) {
+          setChecked(response.checked)
+        }
+        setUser(uid)
+        setLoading(false)
+      })
+    } else {
+      console.log("No user")
+      setLoading(false)
+      // browser.runtime.sendMessage({type: 'no_user'})
+      // .then(response => {
+      //   console.log(response)
+      // })
+    }
   });
 
   return (
-    <Box sx={{width: "100%"}}>
-      <Selector 
-        modules={modules}
-        filterItems={filterItems}
-      />
-      <Footer/>
-    </Box>
+    <ThemeProvider theme={theme}>
+      {
+        isLoading ? (
+          <Box>
+            <Grid sx={{height: '100vh'}} container justifyContent="center" alignItems="center" direction="column">
+              <Grid>
+                <CircularProgress color="secondary" />
+              </Grid>
+              <Grid>
+                <Typography variant="h5">
+                  Loading
+                </Typography>
+              </Grid>
+            </Grid>
+          </Box>
+        ) : (
+          <Box sx={{width: "100%", padding: '1em 1em'}}>
+        {
+          user ? (
+            <Box>
+              <Selector 
+                modules={modules}
+                communities={communities}
+                checked={userChecked}
+                filterItems={filterItems}
+              />
+              {/* <Footer/> */}
+            </Box>
+          ) : (
+            <Box>
+              <Login/>
+            </Box>
+          )
+        }
+        {console.log('in popup', userChecked)}
+      </Box>
+        )
+      }
+    </ThemeProvider>
   )
 };

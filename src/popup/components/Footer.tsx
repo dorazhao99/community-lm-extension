@@ -13,7 +13,7 @@ export function Footer() {
     }
 
     const handleSettings = () => {
-        console.log('Settings')
+        browser.tabs.create({ url: browser.runtime.getURL("dist/login/index.html") });
     }
 
     return (
