@@ -120,30 +120,6 @@ class EventsManager {
         client.logEvent("FavoriteTweet", data.detail);
     }
 
-    onMsgAvailable(id, dom) {
-        console.log('msg available')
-
-        // let currentTweet = $(dom)
-        // window.addEventListener("FeedScroll", function (evt) {
-        //     if (!EventsManager.visualisedTweets.has(tweetId) && currentTweet.isInViewport()) {
-        //         console.log("TweetVisible", tweetId);
-        //         client.logEvent("TweetVisible", {tweetId: tweetId});
-
-        //         EventsManager.visualisedTweets.add(tweetId);
-        //     }
-        // }, false);
-
-        const event = new CustomEvent('msgAvailable',
-        {
-          detail: {
-            id: id,
-            DOM: dom
-          },
-        })
-
-      window.dispatchEvent(event);
-    }
-
 
     onCheckRenderStatus(ids) {
         console.log("Rendered messages:", ids);

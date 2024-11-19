@@ -7,7 +7,7 @@ import { ContentApp } from "./views/ContentApp";
 
 // CSS for chip
 const RequestVariables = {
-  promptHeader: 'Here is additional knowledge that be useful for the prompt. Disregard the knowledge if not relevant.\nKnowledge:'
+  promptHeader: 'Here is additional knowledge that be useful for the prompt. Disregard the knowledge if not relevant.\nKnowledge:<cllm>'
 }
 
 // Firefox `browser.tabs.executeScript()` requires scripts return a primitive value
@@ -25,32 +25,32 @@ function passKnowledge(knowledge) {
 function createPrompt(result) {
   const allKnowledge:any = []
   Object.keys(result).forEach(mod => {
-    allKnowledge.push(result[mod])
+    allKnowledge.push(result[mod].knowledge)
   })
   return allKnowledge.join("\n")
 }
 
 window.addEventListener("change_prompt", function (evt) {
-  browser.storage.local.get().then((result) => {
+  browser.storage.local.get("knowledge").then((result) => {
       console.log("Result", result)
       /*
         TODO: ADD ROUTER TO FIGURE OUT WHICH KNOWLEDGE PICES
       */
-      browser.storage.sync.set({"modules": Object.keys(result)}).then(() => {
+      browser.storage.sync.set({"modules": Object.keys(result["knowledge"])}).then(() => {
         return new Promise((resolve, reject) => {
           resolve(null)
         })
       });
 
      // Update prompt with knowledge 
-      const knowledge = createPrompt(result)
+      const knowledge = createPrompt(result["knowledge"])
       console.log('Knowledge', knowledge)
       console.log(evt)
       const options = JSON.parse(evt.detail.options)
       console.log(options)
       const newBody = JSON.parse(options.body)
       const message = newBody.messages[0].content.parts
-      const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}`;
+      const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
       const newMessage = [combinedKnowledge, ...message]
       console.log(newMessage)
       newBody.messages[0].content.parts = newMessage
@@ -86,43 +86,52 @@ window.addEventListener("change_prompt", function (evt) {
 //   // });
 // }, false);
 function injectChips(element:any) {
-  
-  browser.storage.sync.get("modules").then((result) => {
+  browser.storage.sync.get(["modules", "uid"]).then((result) => {
     console.log("Get Chip", result)
-    const modules = result.modules 
-    console.log("Modules", modules)
-    if (modules && modules.length > 0) {
-      let labelsWrapper = document.createElement("div");
-      labelsWrapper.classList.add("module-container");
+    if (result.uid) {
+      const modules = result.modules 
+      console.log("Modules", modules)
+      if (modules && modules.length > 0) {
+        let labelsWrapper = document.createElement("div");
+        labelsWrapper.classList.add("module-container");
 
-      for (let t = 0; t < modules.length; t++) {
-        let chipElement = document.createElement("a");
-        chipElement.href = "https://github.com/dorazhao99/stanford-hci-ck/tree/main";
-        chipElement.className = "chip";
-        chipElement.classList.add("value-chip");
-        chipElement.textContent = modules[t];     // TO-DO Query Store for the modules mapping to message
-        chipElement.target = "_blank";
-        labelsWrapper.appendChild(chipElement); 
+        browser.storage.local.get("knowledge").then((result) => {
+          let knowledge:any = {}
+          if (result.knowledge) {
+            knowledge = result.knowledge
+          }
+          for (let t = 0; t < modules.length; t++) {
+            const moduleName:string = modules[t]
+            let chipElement = document.createElement("a");
+            chipElement.href = knowledge[moduleName] ? knowledge[moduleName].link : "";
+            chipElement.className = "chip";
+            chipElement.classList.add("value-chip");
+            chipElement.textContent = moduleName;     // TO-DO Query Store for the modules mapping to message
+            chipElement.target = "_blank";
+            labelsWrapper.appendChild(chipElement); 
+          }
+        })
+
+        
+        const style = document.createElement("style");
+        style.textContent = `
+          .chip {
+            background-color: #7091E6;
+            font-size: .75rem;
+            line-height: 20px;
+            border-radius: 8px;
+            padding: 0 1rem;
+            height: 20px; 
+            display: inline-block;
+            margin: 0 0.5rem 0 0;
+          }
+          .chip:hover {
+            background-color: #3D52A0;
+          }
+        `;
+        document.head.appendChild(style);
+        element.parentNode!.appendChild(labelsWrapper);
       }
-
-      const style = document.createElement("style");
-      style.textContent = `
-        .chip {
-          background-color: #7091E6;
-          font-size: .75rem;
-          line-height: 20px;
-          border-radius: 8px;
-          padding: 0 1rem;
-          height: 20px; 
-          display: inline-block;
-          margin: 0 0.5rem 0 0;
-        }
-        .chip:hover {
-          background-color: #3D52A0;
-        }
-      `;
-      document.head.appendChild(style);
-      element.parentNode!.appendChild(labelsWrapper);
     }
     return new Promise((resolve, reject) => {
       resolve(null)
@@ -137,13 +146,39 @@ function observeMessages() {
     const config = { childList: true, subtree: true };
 
     const observer = new MutationObserver((mutations) => {
+      // console.log('All Mutations', mutations)
       mutations.forEach((mutation) => {
+        let addedChip = false
         mutation.addedNodes.forEach((node) => {
+          console.log('Node', node)
+          console.log('Mutation', mutation)
           // Check if the node added is a chat message
-          console.log('Node', node.nodeType, node.classList)
-          if (node.nodeType === 1 && node.classList.contains('markdown')) { 
-            console.log("inject chips")
-            injectChips(node)
+          if (node.nodeType === 1) {
+            const attributes = node.attributes ? node.attributes : undefined
+            if (attributes) {
+              const namedValue = attributes.getNamedItem("data-message-author-role");
+              if (namedValue) {
+                console.log('Named Value', namedValue)
+                if (namedValue.value === "assistant") {
+                  console.log('Mutation', mutation)
+                  console.log("inject chips", attributes)
+                  addedChip = true
+                  injectChips(node)
+                }
+              }
+            } 
+            if (node.classList && node.classList.contains('markdown') && !addedChip) {
+              console.log('Mutation', mutation)
+              console.log("inject chips", node.classList)
+              addedChip = true
+              injectChips(node)
+            }
+            if (node.classList.contains('composer-parent') && node.childNodes.length > 0 && !addedChip) {
+              const childNode = node.childNodes[0]
+              console.log('Child Node', childNode)
+              // TODO: Add chip in here
+              // injectChips(childNode)
+            }
           }
         });
       });
@@ -155,64 +190,8 @@ function observeMessages() {
 
 document.addEventListener('DOMContentLoaded', observeMessages);
 
-
-window.addEventListener("msgAvailable", (ev: Event) => {
-  const customEvent = ev as CustomEvent;
-  let dom = customEvent.detail.DOM;
-  let id = customEvent.detail.id
-  // console.log('dom', dom)
-  if (!dom.hasAttribute("data-has-modules")) {
-    dom.setAttribute("data-has-modules", "TRUE");
-    let labelsWrapper = document.createElement("div");
-    labelsWrapper.classList.add("module-container");
-    browser.storage.sync.get(id).then((result) => {
-      console.log('browser storage', result)
-      if (id in result) {
-        console.log('id in result', result[id])
-        result[id].forEach(module => {
-          console.log('module', module)
-          let chipElement = document.createElement("a");
-          chipElement.href = "https://github.com/dorazhao99/stanford-hci-ck/tree/main";
-          chipElement.className = "chip";
-          chipElement.classList.add("value-chip");
-          chipElement.textContent = module;     // TO-DO Query Store for the modules mapping to message
-          chipElement.target = "_blank";
-          labelsWrapper.appendChild(chipElement); 
-        })
-      }
-    })
-    
-
-    const style = document.createElement("style");
-    style.textContent = `
-      .chip {
-        background-color: #7091E6;
-        font-size: .75rem;
-        line-height: 20px;
-        border-radius: 8px;
-        padding: 0 1rem;
-        height: 20px; 
-        display: inline-block;
-      }
-      .chip:hover {
-        background-color: #3D52A0;
-      }
-    `;
-    document.head.appendChild(style);
-    dom.parentNode!.appendChild(labelsWrapper);
-  }
-  // const tweetValues = (store.state as any).tweetValues.tweetValues[tweetId];
-  // const addChip = (store.state as any).controlViews.showChip;
-  // // console.log('Add Chip', addChip)
-  // // console.log('looking for id', tweetId)
-  // // console.log('tweet values are:', tweetValues, tweetDOM)
-  // if (tweetValues && addChip)
-  //   domHelpers.addLabelsToTweet(tweetValues, tweetDOM);
-});
-
 (() => {
   console.info("[vitesse-webext] Hello world from content script");
-  console.info("New Context")
   browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("request incoming to content script", request);
     passKnowledge(request);
@@ -233,6 +212,8 @@ window.addEventListener("msgAvailable", (ev: Event) => {
       });
     }
   });
+
+
   // communication example: send previous tab title from background page
   // onMessage("tab-prev", ({ data }) => {
   //   console.log(`[vitesse-webext] Navigate from page "${data}"`);
