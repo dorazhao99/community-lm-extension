@@ -110,7 +110,6 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     })
 }
 });
-
 // return new Promise((resolve, reject) => {
 //   moduleServices
 //     .fetchModules()
