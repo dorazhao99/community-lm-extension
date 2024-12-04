@@ -58,11 +58,15 @@ export default {
         }
     },
     async updateKnowledge(checked: Checked, modules: [Module]) {
+        const syncData = await browser.storage.sync.get("uid")
+        const user = syncData?.uid
+        
         return new Promise((resolve, reject) => {
-            axios.post(`${constants.SERVER_API}/get_knowledge`, {checked: checked, modules: modules})
+            axios.post(`${constants.SERVER_API}/get_knowledge`, {user: user, checked: checked, modules: modules})
             .then(response => {
                 if (response.data) {
                     const updatedKnowledge = JSON.stringify(response.data)
+                    console.log('updated knowledge', updatedKnowledge)
                     resolve({success: true, response: updatedKnowledge})
                 }
             })
