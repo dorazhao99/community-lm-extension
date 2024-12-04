@@ -1,6 +1,7 @@
 import { sendMessage } from "webext-bridge";
 import { Tabs } from "webextension-polyfill";
 import browser from "webextension-polyfill";
+import constants from '~/services/constants'; 
 import moduleServices from '~/services/moduleServices';
 import userServices from '~/services/userServices';
 // only on dev mode
@@ -15,38 +16,11 @@ browser.runtime.onInstalled.addListener(({ reason }): void => {
   console.log('Extension installed')
   if (reason === 'install') {
     browser.tabs.update({
-      url: 'http://localhost:3000/download',
+      url: `${constants.URL}/download`,
     })
   }
 })
 
-let previousTabId = 0;
-
-// communication example: send previous tab title from background page
-// see shim.d.ts for type declaration
-browser.tabs.onActivated.addListener(async ({ tabId }) => {
-  if (!previousTabId) {
-    previousTabId = tabId;
-    return;
-  }
-
-  let tab: Tabs.Tab;
-
-  try {
-    tab = await browser.tabs.get(previousTabId);
-    previousTabId = tabId;
-  } catch {
-    return;
-  }
-
-  // eslint-disable-next-line no-console
-  console.log("previous tab", tab);
-  sendMessage(
-    "tab-prev",
-    { title: tab.title },
-    { context: "content-script", tabId }
-  );
-});
 
 // listen for messages from web app
 browser.runtime.onMessageExternal.addListener(async (message, sender, sendResponse) => {
@@ -64,20 +38,17 @@ browser.runtime.onMessageExternal.addListener(async (message, sender, sendRespon
 browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   console.log('request in background', request)
   if (request.type === 'save_module') {
-    // let queryOptions = {active: true, currentWindow: true};
     const knowledge = await moduleServices.updateKnowledge(request.data.checked, request.data.modules)
-    console.log('knowledge', knowledge)
     if (knowledge && knowledge["response"]) {
-      console.log('Knowledge', knowledge)
       const response = JSON.parse(knowledge["response"])
       console.log("response", response)
       let knowledgeDict = {}
 
       Object.keys(response).forEach((key) => {
-        console.log(key, response[key].knowledge)
         knowledgeDict[key] = {
           knowledge: response[key].knowledge.knowledge.join("\n"),
-          link: response[key].link
+          link: response[key].link,
+          name: response[key].name
         }
       })
 
@@ -88,6 +59,9 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
           resolve(null)
         })
       });
+
+      // update database
+
     }
   } else if (request.type === 'popup_open') {
     console.log('Open Popup')
@@ -123,11 +97,18 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   }
   else if (request.type === 'sign_in') {
       console.log("open sign in")
-      browser.tabs.create({ url: "http://localhost:3000/login" });
+      browser.tabs.create({ url: `${constants.URL}/login` });
       return new Promise((resolve, reject) => {
         resolve(null)
       })
   }
+  else if (request.type === 'sign_up') {
+    console.log("open sign in")
+    browser.tabs.create({ url: `${constants.URL}/signup` });
+    return new Promise((resolve, reject) => {
+      resolve(null)
+    })
+}
 });
 
 // return new Promise((resolve, reject) => {

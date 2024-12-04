@@ -3,6 +3,8 @@ import Grid from '@mui/material/Grid2';
 import { Module } from './Module';
 import { TabList, TabContext, TabPanel} from '@mui/lab';
 import { Typography, Box, Paper, Tab, Button, InputBase, IconButton } from '@mui/material';
+import Alert from '@mui/material/Alert';
+import CheckIcon from '@mui/icons-material/Check';
 import { CommunityOption } from './CommunityOption';
 import SearchIcon from '@mui/icons-material/Search';
 import browser from "webextension-polyfill";
@@ -15,6 +17,8 @@ interface Checked {
 export function Selector(props) {
     const [value, setValue] = useState('1');
     const [checked, setChecked] = useState(props.checked)
+    const [showAlert, setAlert] = useState(false)
+    const [isSuccess, setSuccess] = useState(false)
 
     useEffect(() => {
         browser.storage.sync.get("checkedModules")
@@ -47,6 +51,7 @@ export function Selector(props) {
     }
 
     const sendMessage = () => {
+        console.log('send messsage', checked, props.modules)
         browser.runtime.sendMessage({
             type: "save_module",
             data: {checked: checked, modules: props.modules}
@@ -54,13 +59,20 @@ export function Selector(props) {
         .then(() => {
             browser.storage.sync.set({checkedModules: checked})
             console.log("Modules saved")
+            setAlert(true)
+            setSuccess(true)
+        })
+        .catch(() => {
+            setAlert(true)
+            setSuccess(false)
         });
     }
 
     const checkAll = (event, modules) => {
         let updateChecked = {...checked}
+        console.log('comm checkked', updateChecked, modules)
         modules.forEach((module, _) => {
-          updateChecked[module.id] = event.target.checked
+            updateChecked[module] = event.target.checked
         })
         setChecked(updateChecked)
       }
@@ -68,6 +80,29 @@ export function Selector(props) {
 
   return (
     <Box sx={{ typography: 'body1'}}>
+        <Grid container justifyContent="end">
+            {
+                showAlert ? (
+                    isSuccess ? (
+                        <Alert 
+                        sx={{ position: "absolute", top: 5, left: 255, right: 10, zIndex: 999, width: "200px" }} 
+                        severity="success"
+                        onClose={() => setAlert(false)}
+                    >
+                        Modules saved.
+                    </Alert>
+                    ) : (
+                        <Alert 
+                        sx={{ position: "absolute", top: 5, left: 255, right: 10, zIndex: 999, width: "210px" }} 
+                        severity="error"
+                        onClose={() => setAlert(false)}
+                    >
+                        Error saving modules.
+                    </Alert>
+                    )
+                ) : null
+            }
+        </Grid>
         <TabContext value={value}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
             <TabList onChange={handleChange} aria-label="lab API tabs example">
@@ -124,7 +159,7 @@ export function Selector(props) {
                                 name = {comm.name}
                                 description = {comm.description}
                                 modules = {comm.modules}
-                                allModules = {Object.values(props.modules).map(module => module.id)}
+                                allModules = {props.modules}
                                 onChange={handleChecked}
                                 handleChangeAll={() => checkAll(event, comm.modules)}
                             />
@@ -135,7 +170,7 @@ export function Selector(props) {
             </Box>
         </TabPanel>
         </TabContext>
-        <Grid sx={{padding: '12px'}} ontainer justifyContent="center">
+        <Grid sx={{padding: '12px'}} container justifyContent="center">
             <Button 
                 sx={{width: '95%'}} 
                 onClick={sendMessage} 

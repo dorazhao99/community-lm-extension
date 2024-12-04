@@ -7,7 +7,7 @@ import { ContentApp } from "./views/ContentApp";
 
 // CSS for chip
 const RequestVariables = {
-  promptHeader: 'Here is additional knowledge that be useful for the prompt. Disregard the knowledge if not relevant.\nKnowledge:<cllm>'
+  promptHeader: 'Here is additional knowledge. First, check whether the knowledge is useful to answer the query. If the knowledge is NOT usefule, disregard the knowledge and do NOT make reference to it when answering the prompt.\nKnowledge:<cllm>'
 }
 
 // Firefox `browser.tabs.executeScript()` requires scripts return a primitive value
@@ -102,11 +102,12 @@ function injectChips(element:any) {
           }
           for (let t = 0; t < modules.length; t++) {
             const moduleName:string = modules[t]
+            console.log('chip knowledge', knowledge)
             let chipElement = document.createElement("a");
             chipElement.href = knowledge[moduleName] ? knowledge[moduleName].link : "";
             chipElement.className = "chip";
             chipElement.classList.add("value-chip");
-            chipElement.textContent = moduleName;     // TO-DO Query Store for the modules mapping to message
+            chipElement.textContent = knowledge[moduleName].name;     // TO-DO Query Store for the modules mapping to message
             chipElement.target = "_blank";
             labelsWrapper.appendChild(chipElement); 
           }

@@ -47,7 +47,8 @@ function editString(inputString, originalMessage) {
             // If it's not a data line, push it unchanged
             modifiedLines.push(line);
         }
-      } catch {
+      } catch(error) {
+        console.log(error)
         modifiedLines.push(line);
       }
   });
@@ -137,29 +138,6 @@ function chunkString(str, N) {
 
   return chunks;
 }
-// function sanitizeResponse(response) {
-//   console.log('Response', response)
-//   if (response.mapping) {
-//     const mapping = response.mapping 
-//     const newMapping = {...mapping}
-//     Object.keys(mapping).forEach(item => {
-//       if (mapping[item].message) {
-//         const author = item.message.author 
-//         if (author === 'user') {
-//           const content = item.message.content.parts 
-//           const updatedContent = []
-//           if (content.length > 1) {
-//             updatedContent.push(content[1]) // UPDATE if there is more than 2 parts
-//           }
-//           newMapping[item].message.content.parts = updatedContent
-//         }
-//       }
-//     })
-//     console.log(newMapping)
-//     response.mapping = newMapping
-//   }
-//   return response
-// }
 
 window.fetch = async (...args) => {
   const [resource, options] = args
@@ -209,23 +187,21 @@ window.fetch = async (...args) => {
           console.log('original', originalPrompt)
           const chunk = decoder.decode(value, { stream: true });
           const editedChunk = editString(chunk, originalPrompt)
-          const messageId = getMsgId(chunk)
-          console.log('Message ID', messageId)
-          if (messageId.length > 0) {
-            console.log("Found ID")
+          // const messageId = getMsgId(chunk)
+          // console.log('Message ID', messageId)
+          // if (messageId.length > 0) {
+          //   console.log("Found ID")
             
-            const event = new CustomEvent("add_chip", {
-              detail: {
-                  id: messageId,
-                  modules: ["547"]
-              }
-            });
-            window.dispatchEvent(event);
-          }
+          //   const event = new CustomEvent("add_chip", {
+          //     detail: {
+          //         id: messageId,
+          //         modules: ["547"]
+          //     }
+          //   });
+          //   window.dispatchEvent(event);
+          // }
           // Encode the modified text back to a Uint8Array
           const modifiedValue = new TextEncoder().encode(editedChunk);
-
-          // Enqueue the modified chunk
           controller.enqueue(modifiedValue);
           },
           cancel() {

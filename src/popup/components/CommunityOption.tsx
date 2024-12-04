@@ -9,11 +9,12 @@ import './module.css';
 
 export function CommunityOption(props) {
   const [isCheckAll, setCheckAll] = useState(0)
+  const moduleIds = Object.values(props.allModules).map(item => item.id);
 
   const checkAll = () => {
     let values = []
     props.modules.forEach((module, _) => {
-      let isChecked = props.checked[module.id] ? props.checked[module.id] : false
+      let isChecked = props.checked[module] ? props.checked[module] : false
       values.push(isChecked)
     })
     // Check if the object is empty
@@ -40,10 +41,11 @@ export function CommunityOption(props) {
     checkAll();
 }, [props.checked]);
 
-  const validChildren = props.modules.filter(module => props.allModules.includes(module.id));
-
+  const validChildren = props.modules.filter(module => moduleIds.includes(module));
+  
   return (
     <Box>
+      {console.log(moduleIds, props.modules)}
       {
         validChildren.length > 0 ? (
           <Paper className="module">
