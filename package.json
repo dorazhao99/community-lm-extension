@@ -1,8 +1,8 @@
 {
-  "name": "vitesse-webext",
-  "displayName": "Vitesse WebExt",
+  "name": "Knoll",
+  "displayName": "Knoll",
   "version": "0.0.1",
-  "description": "[description]",
+  "description": "Build and create custom knowledge repositories that you can easily incorporate into LLMs.",
   "private": true,
   "scripts": {
     "dev": "npm run clear && cross-env NODE_ENV=development run-p dev:prepare dev:background dev:web dev:js dev:serialCopy",
@@ -72,6 +72,7 @@
     "@mui/lab": "6.0.0-beta.14",
     "@mui/material": "^6.1.6",
     "@mui/styled-engine-sc": "^6.1.6",
+    "axios": "^1.7.7",
     "mui": "^0.0.1",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
