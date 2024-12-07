@@ -37,9 +37,6 @@ export function Module(props) {
                         {props.description}
                     </Typography>
                 </Grid>
-                <Grid size={1}>
-                    {props.access === 1 ? <div/> : <LockIcon/>}
-                </Grid>
             </Grid>
             {/* <Grid container>
                 <IconButton type="button" aria-label="github">

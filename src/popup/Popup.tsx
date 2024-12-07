@@ -29,19 +29,21 @@ export const Popup = () => {
   document.addEventListener('DOMContentLoaded', async(event) => {
     const syncData = await browser.storage.sync.get("uid")
     const uid = syncData?.uid
-    setUser(uid)
-
+    setUser(uid);
+    // setModules([]);
+    // setAllModules([]);
+    // setLoading(false);
     if (uid) {
-      browser.runtime.sendMessage({ type: 'popup_open' })
+      browser.runtime.sendMessage({ type: 'popup_open', data: {user: uid} })
       .then(response => {
         console.log('Response in popup', response, response.checked)
         if (response.modules.success) {
           setModules(response.modules.response)
           setAllModules(response.modules.response)
         }
-        if (response.communities.success) {
-          setCommunities(response.communities.response)
-        }
+        // if (response.communities.success) {
+        //   setCommunities(response.communities.response)
+        // }
         if (response.checked) {
           setChecked(response.checked)
         }
@@ -51,12 +53,20 @@ export const Popup = () => {
     } else {
       console.log("No user")
       setLoading(false)
-      // browser.runtime.sendMessage({type: 'no_user'})
-      // .then(response => {
-      //   console.log(response)
-      // })
     }
   });
+
+  const reloadModules = () => {
+    console.log('Reload')
+    browser.runtime.sendMessage({ type: 'popup_open', data: {user: user} })
+      .then(response => {
+        console.log('Response in popup', response, response.checked)
+        if (response.modules.success) {
+          setModules(response.modules.response)
+          setAllModules(response.modules.response)
+        }
+      })
+    }
 
   return (
     <ThemeProvider theme={theme}>
@@ -75,15 +85,17 @@ export const Popup = () => {
             </Grid>
           </Box>
         ) : (
-          <Box sx={{width: "100%", padding: '1em 1em'}}>
+          <Box sx={{width: "100%"}}>
         {
           user ? (
             <Box>
               <Selector 
+                user={user}
                 modules={modules}
                 communities={communities}
                 checked={userChecked}
                 filterItems={filterItems}
+                reloadModules={reloadModules}
               />
               {/* <Footer/> */}
             </Box>

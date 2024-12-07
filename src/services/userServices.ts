@@ -57,5 +57,20 @@ export default {
             console.log('No user')
             return {success: false}
         }
+    },
+    async addUserModule(data: Object) {
+        const syncData = await browser.storage.sync.get("uid")
+        const uid = syncData?.uid
+        if (uid) {
+            const response = await axios.post(`${constants.SERVER_API}/addModule`, data)
+            if (response.data) {
+                return {success: true, response: response.data}
+            } else {
+                return {success: false}
+            }
+        } else {
+            console.log('No user')
+            return {success: false}
+        }
     }
 }

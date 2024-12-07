@@ -27,7 +27,7 @@ export default {
             const syncData = await browser.storage.sync.get("uid")
             const user = syncData?.uid
             console.log(user)
-            const response = await axios.get(`${constants.SERVER_API}/`, {
+            const response = await axios.get(`${constants.SERVER_API}/userModule`, {
                 params: {user: user}
             })
             if (response.data) {
@@ -57,6 +57,8 @@ export default {
             return {success: false}
         }
     },
+
+    // get knowledge from github
     async updateKnowledge(checked: Checked, modules: [Module]) {
         const syncData = await browser.storage.sync.get("uid")
         const user = syncData?.uid

@@ -1,9 +1,15 @@
+import { resolve } from "path";
 import { sendMessage } from "webext-bridge";
 import { Tabs } from "webextension-polyfill";
 import browser from "webextension-polyfill";
 import constants from '~/services/constants'; 
 import moduleServices from '~/services/moduleServices';
 import userServices from '~/services/userServices';
+
+interface Cache {
+  [key: any]: any;
+}
+
 // only on dev mode
 if (import.meta.hot) {
   // @ts-expect-error for background HMR
@@ -40,13 +46,14 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   if (request.type === 'save_module') {
     const knowledge = await moduleServices.updateKnowledge(request.data.checked, request.data.modules)
     if (knowledge && knowledge["response"]) {
-      const response = JSON.parse(knowledge["response"])
+      const response = JSON.parse(knowledge["response"]) // parse the stringified response
       console.log("response", response)
       let knowledgeDict = {}
 
       Object.keys(response).forEach((key) => {
+        const subKnowledge = response[key].knowledge.knowledge // will be undefined for markdown files
         knowledgeDict[key] = {
-          knowledge: response[key].knowledge.knowledge.join("\n"),
+          knowledge: subKnowledge ? subKnowledge.join("\n") : response[key].knowledge,
           link: response[key].link,
           name: response[key].name
         }
@@ -59,41 +66,36 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
           resolve(null)
         })
       });
-
-      // update database
-
     }
   } else if (request.type === 'popup_open') {
     console.log('Open Popup')
-    return new Promise((resolve, reject) => {
-      moduleServices
-        .fetchModules()
-        .then((response) => {
-          const modules = response
-          moduleServices
-            .fetchCommunities()
-            .then((response) => {
-              console.log('Communities', response)
-              const communities = response
-              resolve({modules: modules, communities: communities});
-            })
-          // userServices
-          // .fetchUserModules("test")
-          // .then((userResponse) => {
-          //   console.log('user response', userResponse)
-          //   const checked = userResponse.response.checked ? userResponse.response.checked : {}
-          //   resolve({modules: modules, checked: checked});
-          // })
-          // .catch((error) => {
-          //   console.error(error)
-          //   resolve({modules: modules, checked: {}});
-          // })
-        })
-        .catch((error) => {
-          console.error(error)
-          resolve({modules: []});
-        });
-    });
+    
+    // Check if data is stored in cache before calliing API
+      return new Promise((resolve, reject) => {
+        moduleServices
+          .fetchModules(request.data)
+          .then((response) => {
+            const modules = response
+            resolve({modules: modules})
+          })
+          .catch((error) => {
+            console.error(error)
+            resolve({modules: []});
+          });
+      });
+  } else if (request.type === 'add_module') {
+      console.log('Add Module', request.data)    
+      return new Promise((resolve, reject) => {
+        userServices
+          .addUserModule(request.data)
+          .then((response) => {
+            resolve(response)
+          })
+          .catch((error) => {
+            console.error(error)
+            resolve({});
+          });
+      });
   }
   else if (request.type === 'sign_in') {
       console.log("open sign in")
@@ -110,6 +112,55 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     })
 }
 });
+
+
+ // let storedData:Cache = {}
+    // browser.storage.local.get(['modules', 'communities']).then((result) => {
+    //   storedData = result
+    // })
+    
+    // console.log('Stored Data', storedData, storedData.modules, storedData.communities)
+    // // Check which endpoints to call depending on what is in the cache
+    // if (storedData.modules && storedData.communities) {
+    //   return new Promise((resolve, reject) => {
+    //     const returnData:any = {modules: storedData.modules, communities: storedData.communities}
+    //     resolve(returnData);
+    //   })
+    // } 
+    // // if only community data in the cache, fetch module data
+    // else if (storedData.communities) {
+    //   return new Promise((resolve, reject) => {
+    //     moduleServices
+    //     .fetchModules()
+    //     .then((response) => {
+    //       const modules = response
+    //       const returnData:any = {modules: modules, communities: storedData.communities}
+    //       resolve(returnData);
+    //     })
+    //     .catch((error) => {
+    //       console.error(error)
+    //       resolve({modules: [], communities: []});
+    //     });
+    //   })
+    // } 
+    // // if only module data in the cache, fetch community data
+    // else if (storedData.modules) {
+    //   return new Promise((resolve, reject) => {
+    //     moduleServices
+    //     .fetchCommunities()
+    //     .then((response) => {
+    //       const communities = response
+    //       const returnData:any = {modules: storedData.modules, communities: communities}
+    //       resolve(returnData);
+    //     })
+    //     .catch((error) => {
+    //       console.error(error)
+    //       resolve({modules: [], communities: []});
+    //     });
+    //   });
+    // } 
+    // // if cache is empty, fetch both
+    // else {
 // return new Promise((resolve, reject) => {
 //   moduleServices
 //     .fetchModules()
