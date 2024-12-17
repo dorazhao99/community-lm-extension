@@ -2,6 +2,7 @@ import fs from 'fs-extra'
 import type { Manifest } from 'webextension-polyfill'
 import type PkgType from '../package.json'
 import { isDev, isFirefox, port, r } from '../scripts/utils'
+import constants from "../services/constants"
 
 export async function getManifest() {
   const pkg = (await fs.readJSON(r('package.json'))) as typeof PkgType
@@ -14,7 +15,7 @@ export async function getManifest() {
     version: pkg.version,
     description: pkg.description,
     action: {
-      default_icon: './assets/icon-512.png',
+      default_icon: './assets/logo.png',
       default_popup: './dist/popup/index.html',
     },
     options_ui: {
@@ -30,15 +31,20 @@ export async function getManifest() {
           service_worker: './dist/background/index.mjs',
         },
     icons: {
-      16: './assets/icon-512.png',
-      48: './assets/icon-512.png',
-      128: './assets/icon-512.png',
+      16: './assets/logo.png',
+      48: './assets/logo.png',
+      128: './assets/logo.png',
     },
-    permissions: ['tabs', 'storage'],
-    host_permissions: ['*://chatgpt.com/*'],
+    permissions: ['storage'],
+    // host_permissions: ['*://chatgpt.com/*'],
+    externally_connectable: {
+      // matches: ["*://knollapp.com/*", "*://localhost/*"],
+      matches: ["*://knollapp.com/*"],
+    }, 
     content_scripts: [
       {
-        matches: ['*://chatgpt.com/*'],
+        // matches: ['*://chatgpt.com/*', '*://knollapp.com/*', '*://api.knollapp.com/*', "*://localhost/*"],
+        matches: ['*://chatgpt.com/*', '*://knollapp.com/*', '*://api.knollapp.com/*'],
         js: [
           'dist/contentScripts/index.global.js',
           'dist/contentScripts/config.js',
