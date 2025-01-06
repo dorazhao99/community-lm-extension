@@ -110,7 +110,23 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     return new Promise((resolve, reject) => {
       resolve(null)
     })
-}
+  }
+  else if (request.type === 'sent_message') {
+    console.log('Message sent')
+    return new Promise((resolve, reject) => {
+      // Update number of messages sent (currently 1 one at time).
+      // TODO: Batch updates after every X amount of time
+      userServices
+        .updateCount(1)
+        .then((response) => {
+          resolve(response)
+        })
+        .catch((error) => {
+          console.error(error)
+          resolve({});
+        });
+    });
+  }
 });
 
 

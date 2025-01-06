@@ -6,15 +6,7 @@ console.log('FeedWizard enabled - Sampler Only')
 
 const originalFetch = window.fetch
 
-// window.addEventListener(
-//   'setKnowledge',
-//   (ev) => {
-//     RequestVariables.knowledge.push('The course is held in Gates B1')
-//   },
-//   false,
-// );
-
-function editString(inputString, originalMessage) {
+function editString(inputString, originalMessage, remove) {
   const lines = inputString.split('\n');
   const modifiedLines = [];
     lines.forEach(line => {
@@ -22,27 +14,31 @@ function editString(inputString, originalMessage) {
         if (line.startsWith('data: ')) {
             // Extract the JSON part
             const jsonString = line.substring(6).trim(); // Remove 'data: ' and trim spaces
-            // Parse the JSON
-            const jsonObject = JSON.parse(jsonString);
-    
-            // Check and modify the parts array if it exists
-            if (jsonObject.v && jsonObject.v.message) {
-              console.log('JSON Object', jsonObject.v)
-              if (jsonObject.v.message.author) {
-                const author = jsonObject.v.message.author.role
-                console.log('Author', author)
-                if (author === 'user' && jsonObject.v.message.content) {
-                  console.log('Original Message', originalMessage)
-                  if (originalMessage) {
-                    jsonObject.v.message.content.parts = [originalMessage];
+            if (jsonString === '[DONE]') {
+              modifiedLines.push('data: [DONE]');
+            } else {
+              // Parse the JSON
+              const jsonObject = JSON.parse(jsonString);
+                  
+              // Check and modify the parts array if it exists
+              if (jsonObject.v && jsonObject.v.message) {
+                console.log('JSON Object', jsonObject.v)
+                if (jsonObject.v.message.author) {
+                  const author = jsonObject.v.message.author.role
+                  console.log('Author', author)
+                  if (author === 'user' && jsonObject.v.message.content) {
+                    console.log('Original Message', originalMessage)
+                    if (originalMessage) {
+                      jsonObject.v.message.content.parts = [originalMessage];
+                    }
                   }
                 }
               }
+              // Convert the modified object back to JSON string
+              const modifiedJsonString = JSON.stringify(jsonObject);
+              // Reconstruct the line
+              modifiedLines.push(`data: ${modifiedJsonString}`);
             }
-            // Convert the modified object back to JSON string
-            const modifiedJsonString = JSON.stringify(jsonObject);
-            // Reconstruct the line
-            modifiedLines.push(`data: ${modifiedJsonString}`);
         } else {
             // If it's not a data line, push it unchanged
             modifiedLines.push(line);
@@ -172,7 +168,6 @@ window.fetch = async (...args) => {
       const response = await fetch(resource, modifiedBody)
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
-
 
       const modifiedStream = new ReadableStream({
           async pull(controller) {

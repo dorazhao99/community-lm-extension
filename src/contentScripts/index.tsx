@@ -32,44 +32,50 @@ function createPrompt(result) {
 
 window.addEventListener("change_prompt", function (evt) {
   browser.storage.local.get("knowledge").then((result) => {
-      console.log("Result", result)
-      /*
-        TODO: ADD ROUTER TO FIGURE OUT WHICH KNOWLEDGE PICES
-      */
+    console.log("Result", result)
+    /*
+      TODO: ADD ROUTER TO FIGURE OUT WHICH KNOWLEDGE PICES
+    */
+    if ("knowledge" in result) {
       browser.storage.sync.set({"modules": Object.keys(result["knowledge"])}).then(() => {
         return new Promise((resolve, reject) => {
           resolve(null)
         })
       });
+    }
 
-     // Update prompt with knowledge 
-      const knowledge = createPrompt(result["knowledge"])
-      console.log('Knowledge', knowledge)
-      console.log(evt)
-      const options = JSON.parse(evt.detail.options)
-      console.log(options)
-      const newBody = JSON.parse(options.body)
-      const message = newBody.messages[0].content.parts
-      const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
-      const newMessage = [combinedKnowledge, ...message]
-      console.log(newMessage)
-      newBody.messages[0].content.parts = newMessage
-      newBody.customFetch = true
-      newBody.originalMessage = message
-      const modifiedOptions = {
-          ...options,
-          body: JSON.stringify(newBody),
-      }
-      const event = new CustomEvent("send_prompt",
-          {
-              detail: {
-                  resource: evt.detail.resource, 
-                  modifiedOptions: JSON.stringify(modifiedOptions), 
-                  originalPrompt: message[0]
-              }
-          });
+    // Update prompt with knowledge 
+    const promptInject = result["knowledge"] ? result["knowledge"] : ""
+    const knowledge = createPrompt(promptInject)
+    console.log('Knowledge', knowledge)
+    console.log(evt)
+    const options = JSON.parse(evt.detail.options)
+    console.log(options)
+    const newBody = JSON.parse(options.body)
+    const message = newBody.messages[0].content.parts
+    const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
+    const newMessage = [combinedKnowledge, ...message]
+    console.log(newMessage)
+    newBody.messages[0].content.parts = newMessage
+    newBody.customFetch = true
+    newBody.originalMessage = message
+    const modifiedOptions = {
+        ...options,
+        body: JSON.stringify(newBody),
+    }
+    const event = new CustomEvent("send_prompt",
+        {
+            detail: {
+                resource: evt.detail.resource, 
+                modifiedOptions: JSON.stringify(modifiedOptions), 
+                originalPrompt: message[0]
+            }
+        });
 
-      window.dispatchEvent(event);
+    window.dispatchEvent(event);
+    browser.runtime.sendMessage({
+      type: "sent_message",
+    })
   });
 }, false);
 

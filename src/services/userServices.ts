@@ -72,5 +72,24 @@ export default {
             console.log('No user')
             return {success: false}
         }
+    },
+    async updateCount(data: Object) {
+        const syncData = await browser.storage.sync.get("uid")
+        const uid = syncData?.uid
+        if (uid) {
+            const body = {
+                uid: uid, 
+                sessionMessages: data
+            }
+            const response = await axios.post(`${constants.SERVER_API}/updateCount`, body)
+            if (response.data) {
+                return {success: true, response: response.data}
+            } else {
+                return {success: false}
+            }
+        } else {
+            console.log('No user')
+            return {success: false}
+        }
     }
 }
