@@ -5,6 +5,7 @@ import browser from "webextension-polyfill";
 import constants from '~/services/constants'; 
 import moduleServices from '~/services/moduleServices';
 import userServices from '~/services/userServices';
+import gptServices from '~/services/gptServices';
 
 interface Cache {
   [key: any]: any;
@@ -126,6 +127,20 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
           resolve({});
         });
     });
+  }
+  else if (request.type === 'query_gpt') {
+    return new Promise((resolve, reject) => {
+      gptServices
+        .queryGPT(request.data)
+        .then((response) => {
+          console.log('Resolve GPT', response)
+          resolve(response)
+        })
+        .catch((error) => {
+          console.error(error)
+          resolve({})
+        })
+    })
   }
 });
 

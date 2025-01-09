@@ -1,7 +1,7 @@
 {
   "name": "Knoll",
   "displayName": "Knoll",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Build and create custom knowledge repositories that you can easily incorporate into LLMs.",
   "private": true,
   "scripts": {
@@ -74,6 +74,7 @@
     "@mui/styled-engine-sc": "^6.1.6",
     "axios": "^1.7.7",
     "mui": "^0.0.1",
+    "okapibm25": "^1.4.1",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "readable-stream-clone": "^1.0.0",

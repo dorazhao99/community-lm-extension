@@ -5,21 +5,29 @@ console.log('FeedWizard enabled - Sampler Only')
 // }
 
 const originalFetch = window.fetch
+let prevLines = []
 
 function editString(inputString, originalMessage, remove) {
   const lines = inputString.split('\n');
   const modifiedLines = [];
-    lines.forEach(line => {
-      try {
-        if (line.startsWith('data: ')) {
-            // Extract the JSON part
-            const jsonString = line.substring(6).trim(); // Remove 'data: ' and trim spaces
-            if (jsonString === '[DONE]') {
-              modifiedLines.push('data: [DONE]');
-            } else {
-              // Parse the JSON
+  lines.forEach(line => {
+    // console.log('Edit', line, prevLines)
+    try {
+      if (prevLines.length > 0) {
+        line = prevLines.join(' ') + line
+      }
+      // console.log('New Line', line)
+      if (line.startsWith('data: ')) {
+          // Extract the JSON part
+          let jsonString = line.substring(6).trim(); // Remove 'data: ' and trim spaces
+          if (jsonString === '[DONE]') {
+            prevLines = []
+            modifiedLines.push('data: [DONE]');
+          } else {
+            // Parse the JSON
+            try {
               const jsonObject = JSON.parse(jsonString);
-                  
+              prevLines = [] // JSON is complete and parsed successfully
               // Check and modify the parts array if it exists
               if (jsonObject.v && jsonObject.v.message) {
                 console.log('JSON Object', jsonObject.v)
@@ -38,15 +46,20 @@ function editString(inputString, originalMessage, remove) {
               const modifiedJsonString = JSON.stringify(jsonObject);
               // Reconstruct the line
               modifiedLines.push(`data: ${modifiedJsonString}`);
+            } catch {
+              console.log('Cannot parse')
+              prevLines.push(jsonString)
             }
-        } else {
-            // If it's not a data line, push it unchanged
-            modifiedLines.push(line);
-        }
-      } catch(error) {
-        console.log(error)
-        modifiedLines.push(line);
+          }
+      } else {
+          // If it's not a data line, push it unchanged
+          modifiedLines.push(line);
+          prevLines = []
       }
+    } catch(error) {
+      console.log(error)
+      modifiedLines.push(line);
+    }
   });
   
   // Join the modified lines back into a single string
@@ -96,7 +109,7 @@ function processResponse(chunks) {
       let updatedMapping = response.mapping 
       Object.keys(updatedMapping).forEach(id => {
         let item = updatedMapping[id]
-        console.log('Item', item)
+        // console.log('Item', item)
         if (item.message && item.message.author) {
           const author = item.message.author.role
           if (author === 'user') {
@@ -173,7 +186,6 @@ window.fetch = async (...args) => {
           async pull(controller) {
           // Read from the original stream
           const { value, done } = await reader.read();
-          console.log(done, value)
           if (done) {
               // Close the controller if done
               controller.close();
