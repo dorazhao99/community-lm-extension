@@ -8,7 +8,12 @@ import { routeDocuments } from "./router";
 
 
 // global variable for which modules are injected 
+interface Cache {
+  [key: string]: boolean;
+}
+
 var activatedChips:Array<Object> = []
+var seenChips:Cache = {}
 
 // CSS for chip
 const RequestVariables = {
@@ -38,8 +43,11 @@ function createPrompt(result) {
   const allKnowledge:any = []
   activatedChips = []
   Object.keys(result).forEach(mod => {
-    allKnowledge.push(result[mod].knowledge)
     activatedChips.push(result[mod])
+    if (!(mod in seenChips)) {
+      allKnowledge.push(result[mod].knowledge)
+      seenChips[mod] = true
+    }
   })
   return allKnowledge.join("\n")
 }
@@ -57,9 +65,7 @@ window.addEventListener("change_prompt", function (evt) {
     }
 
     // Update prompt with knowledge 
-    console.log(evt)
     const options = JSON.parse(evt.detail.options)
-    console.log(options)
     const newBody = JSON.parse(options.body)
     const message = newBody.messages[0].content.parts
 
@@ -71,12 +77,10 @@ window.addEventListener("change_prompt", function (evt) {
         activatedChips = []
       } else {
         const knowledge = createPrompt(relevantDocs)
-        console.log('Knowledge', knowledge)
         const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>\nQuery:`;
         newMessage = [combinedKnowledge, ...message]
       }
-      
-      console.log(newMessage)
+      console.log('Message', newMessage)
       newBody.messages[0].content.parts = newMessage
       newBody.customFetch = true
       newBody.originalMessage = message
@@ -223,6 +227,7 @@ function injectChips(element:any) {
 function observeMessages() {
   // TODO: Replace when we store message module mappings
   activatedChips = [] // Reset chips when loading new page. 
+  seenChips = {}
 
   const mainElement = document.querySelector('main');
 

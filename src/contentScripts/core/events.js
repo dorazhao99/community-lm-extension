@@ -179,7 +179,6 @@ class EventsManager {
     }
 
     onKeyDown(e) {
-        console.log(e.keyCode)
         if (EventsManager.lockScroll) {
             if (EventsManager.keys[e.keyCode])
                 e.preventDefault();
