@@ -12,6 +12,7 @@ interface Cache {
   [key: string]: boolean;
 }
 
+var prevURL:string = ""; 
 var activatedChips:Array<Object> = []
 var seenChips:Cache = {}
 
@@ -52,10 +53,16 @@ function createPrompt(result) {
   return allKnowledge.join("\n")
 }
 
+
 window.addEventListener("change_prompt", function (evt) {
   browser.storage.local.get("knowledge").then((result) => {
     console.log("Result", result)
-    
+    const url = window.location.href
+    if (url !== prevURL || url === "https://chatgpt.com/") {
+      seenChips = {}
+      prevURL = url
+    }
+
     if ("knowledge" in result) {
       browser.storage.sync.set({"modules": Object.keys(result["knowledge"])}).then(() => {
         return new Promise((resolve, reject) => {
@@ -227,8 +234,6 @@ function injectChips(element:any) {
 function observeMessages() {
   // TODO: Replace when we store message module mappings
   activatedChips = [] // Reset chips when loading new page. 
-  seenChips = {}
-
   const mainElement = document.querySelector('main');
 
   if (mainElement) {
@@ -278,7 +283,6 @@ function observeMessages() {
 }
 
 document.addEventListener('DOMContentLoaded', observeMessages);
-
 (() => {
   console.info("[vitesse-webext] Hello world from content script");
   browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
