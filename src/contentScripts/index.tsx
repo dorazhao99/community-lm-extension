@@ -13,6 +13,7 @@ interface Cache {
 }
 
 var prevURL:string = ""; 
+var url: string=""; 
 var activatedChips:Array<Object> = []
 var seenChips:Cache = {}
 
@@ -57,8 +58,8 @@ function createPrompt(result) {
 window.addEventListener("change_prompt", function (evt) {
   browser.storage.local.get("knowledge").then((result) => {
     console.log("Result", result)
-    const url = window.location.href
-    if (url !== prevURL || url === "https://chatgpt.com/") {
+    url = window.location.href
+    if (url !== prevURL || url === "https://chatgpt.com/" || url === "https://claude.ai/") {
       seenChips = {}
       prevURL = url
     }
@@ -74,33 +75,45 @@ window.addEventListener("change_prompt", function (evt) {
     // Update prompt with knowledge 
     const options = JSON.parse(evt.detail.options)
     const newBody = JSON.parse(options.body)
-    const message = newBody.messages[0].content.parts
+    const origin = evt.detail.origin 
+    const message = origin === 'openai' ? newBody.messages[0].content.parts : newBody.prompt
+    const originalPrompt = origin === 'openai' ? message[0] : message
 
     routeDocuments(result["knowledge"], message)
     .then((relevantDocs) => {
       console.log('Relevant Docs', relevantDocs)
-      let newMessage = [...message]
+      let newMessage = origin === 'openai' ? [...message] : message
+
       if (Object.keys(relevantDocs).length === 0) {
         activatedChips = []
       } else {
         const knowledge = createPrompt(relevantDocs)
         const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>\nQuery:`;
-        newMessage = [combinedKnowledge, ...message]
+        if (origin === 'openai') {
+          newMessage = [combinedKnowledge, ...message]
+        } else if (origin === 'claude') {
+          newMessage = `<KNOLL> ${combinedKnowledge} ${message}`
+        }
       }
       console.log('Message', newMessage)
-      newBody.messages[0].content.parts = newMessage
-      newBody.customFetch = true
-      newBody.originalMessage = message
+      if (origin === 'openai') {
+        newBody.messages[0].content.parts = newMessage
+        newBody.customFetch = true
+      } else if (origin === 'claude') {
+        newBody.prompt = newMessage
+      }
+      // newBody.originalMessage = message
       const modifiedOptions = {
           ...options,
           body: JSON.stringify(newBody),
       }
+      console.log('newbody in index', newBody)
       const event = new CustomEvent("send_prompt",
           {
               detail: {
                   resource: evt.detail.resource, 
                   modifiedOptions: JSON.stringify(modifiedOptions), 
-                  originalPrompt: message[0]
+                  originalPrompt: originalPrompt
               }
           });
 
@@ -112,11 +125,13 @@ window.addEventListener("change_prompt", function (evt) {
     .catch((error) => {
       console.log(error)
       // Proceed as if no knowledge was added 
-      const newMessage = [message]
-      console.log(newMessage)
-      newBody.messages[0].content.parts = newMessage
-      newBody.customFetch = true
-      newBody.originalMessage = message
+      if (origin === 'openai') {
+        newBody.messages[0].content.parts = [message]
+        newBody.customFetch = true
+      } else {
+        newBody.prompt = `<KNOLL> ${message}`
+      }
+      // newBody.originalMessage = message
       const modifiedOptions = {
           ...options,
           body: JSON.stringify(newBody),
@@ -126,7 +141,7 @@ window.addEventListener("change_prompt", function (evt) {
               detail: {
                   resource: evt.detail.resource, 
                   modifiedOptions: JSON.stringify(modifiedOptions), 
-                  originalPrompt: message[0]
+                  originalPrompt: originalPrompt
               }
           });
 

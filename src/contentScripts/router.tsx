@@ -29,10 +29,10 @@ async function routeDocuments(modules: any, prompt: any) {
         console.log(cleaned)
         docs.push(cleaned)
         moduleNames.push(key)
-      }
+    }
       
-
-    const q = escapeRegExp(remove_stopwords(prompt.join(' '))).split(' ')
+    prompt = Array.isArray(prompt) ? prompt.join(' ') : prompt
+    const q = escapeRegExp(remove_stopwords(prompt)).split(' ')
     const result = BM25(docs, q, { k1: 1.3, b: 0.9 }) as number[];
 
     const sortedIndices = result
