@@ -59,7 +59,7 @@ window.addEventListener("change_prompt", function (evt) {
   browser.storage.local.get("knowledge").then((result) => {
     console.log("Result", result)
     url = window.location.href
-    if (url !== prevURL || url === "https://chatgpt.com/" || url === "https://claude.ai/") {
+    if (url !== prevURL || url.includes("chatgpt.com") || url.includes("claude.ai")) {
       seenChips = {}
       prevURL = url
     }
@@ -88,7 +88,7 @@ window.addEventListener("change_prompt", function (evt) {
         activatedChips = []
       } else {
         const knowledge = createPrompt(relevantDocs)
-        const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>\nQuery:`;
+        const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
         if (origin === 'openai') {
           newMessage = [combinedKnowledge, ...message]
         } else if (origin === 'claude') {
@@ -247,53 +247,93 @@ function injectChips(element:any) {
 }
 
 function observeMessages() {
-  // TODO: Replace when we store message module mappings
   activatedChips = [] // Reset chips when loading new page. 
-  const mainElement = document.querySelector('main');
-
-  if (mainElement) {
-    const config = { childList: true, subtree: true };
-
-    const observer = new MutationObserver((mutations) => {
-      // console.log('All Mutations', mutations)
-      mutations.forEach((mutation) => {
-        let addedChip = false
-        mutation.addedNodes.forEach((node) => {
-          // console.log('Node', node)
-          // console.log('Mutation', mutation)
-          // Check if the node added is a chat message
-          if (node.nodeType === 1) {
-            const attributes = node.attributes ? node.attributes : undefined
-            if (attributes) {
-              const namedValue = attributes.getNamedItem("data-message-author-role");
-              if (namedValue) {
-                // console.log('Named Value', namedValue)
-                if (namedValue.value === "assistant") {
-                  // console.log('Mutation', mutation)
-                  console.log("inject chips", attributes)
-                  addedChip = true
-                  injectChips(node)
+  const location = window.location.href
+  console.log(location)
+  if (location.includes('chatgpt.com')) {
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      const config = { childList: true, subtree: true };
+  
+      const observer = new MutationObserver((mutations) => {
+        // console.log('All Mutations', mutations)
+        mutations.forEach((mutation) => {
+          let addedChip = false
+          mutation.addedNodes.forEach((node) => {
+            // console.log('Node', node)
+            // console.log('Mutation', mutation)
+            // Check if the node added is a chat message
+            if (node.nodeType === 1) {
+              const attributes = node.attributes ? node.attributes : undefined
+              if (attributes) {
+                const namedValue = attributes.getNamedItem("data-message-author-role");
+                if (namedValue) {
+                  // console.log('Named Value', namedValue)
+                  if (namedValue.value === "assistant" && !addedChip) {
+                    // console.log('Mutation', mutation)
+                    console.log("inject chips", attributes)
+                    addedChip = true
+                    injectChips(node)
+                  }
                 }
+              } 
+              if (node.classList && node.classList.contains('markdown') && !addedChip) {
+                console.log('Mutation', mutation)
+                console.log("inject chips", node.classList)
+                addedChip = true
+                injectChips(node)
               }
-            } 
-            if (node.classList && node.classList.contains('markdown') && !addedChip) {
-              console.log('Mutation', mutation)
-              console.log("inject chips", node.classList)
-              addedChip = true
-              injectChips(node)
+              if (node.classList.contains('composer-parent') && node.childNodes.length > 0 && !addedChip) {
+                const childNode = node.childNodes[0]
+                console.log('Child Node', childNode)
+                // TODO: Add chip in here
+                // injectChips(childNode)
+              }
             }
-            if (node.classList.contains('composer-parent') && node.childNodes.length > 0 && !addedChip) {
-              const childNode = node.childNodes[0]
-              console.log('Child Node', childNode)
-              // TODO: Add chip in here
-              // injectChips(childNode)
-            }
-          }
+          });
         });
       });
+      observer.observe(mainElement, config);
+    }
+  }
+  else if (window.location.href.includes('claude.ai')) {
+    console.log('Claude inject')
+    // function appendDivToNewX(targetDiv) {
+    //   injectChips(targetDiv)
+    //   // const newDiv = document.createElement('div');
+    //   // newDiv.textContent = 'Appended div'; // Customize the content of the new div
+    //   // targetDiv.appendChild(newDiv);
+    // }
+  
+    // Observer callback function to monitor mutations
+    const observerCallback = (mutationsList) => {
+        for (const mutation of mutationsList) {
+            let addedChip = false
+            if (mutation.type === 'childList') {
+                console.log(mutation)
+                // Check added nodes for the class 'X'
+                if (mutation.target.className.includes('font-claude-message') && !addedChip) {
+                  console.log(mutation)
+                  mutation.addedNodes.forEach(node => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                      console.log('Inject')
+                      addedChip = true
+                      injectChips(node)
+                    }
+                  });
+                }
+            }
+        }
+    };
+    
+    // Set up the observer
+    const observer = new MutationObserver(observerCallback);
+    
+    // Start observing the document body for child node additions
+    observer.observe(document.body, {
+        childList: true, // Monitor direct children being added/removed
+        subtree: true    // Monitor changes within all descendants
     });
-
-    observer.observe(mainElement, config);
   }
 }
 
