@@ -11,5 +11,15 @@ export default {
         } else {
             return {modules: []}
         }
+    },
+
+    async queryEmbeddings(data:any) {
+        const response = await axios.post(`${constants.EMBEDDING_URL}/similarity`, data)
+        console.log('Embedding Response', response)
+        if (response.data) {
+            return {modules: response.data}
+        } else {
+            return {modules: []}
+        }
     }
 }
