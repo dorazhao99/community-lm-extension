@@ -4,7 +4,7 @@ import ReactDOM from "react-dom";
 import { onMessage } from "webext-bridge";
 import browser from "webextension-polyfill";
 import { ContentApp } from "./views/ContentApp";
-import { routeDocuments } from "./router";
+import { routeDocuments, routeDocumentsEmbedding } from "./router";
 
 
 // global variable for which modules are injected 
@@ -76,7 +76,7 @@ window.addEventListener("change_prompt", function (evt) {
     const newBody = JSON.parse(options.body)
     const message = newBody.messages[0].content.parts
 
-    routeDocuments(result["knowledge"], message)
+    routeDocumentsEmbedding(result["knowledge"], message)
     .then((relevantDocs) => {
       console.log('Relevant Docs', relevantDocs)
       let newMessage = [...message]
