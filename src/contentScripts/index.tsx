@@ -298,12 +298,46 @@ function observeMessages() {
   }
   else if (window.location.href.includes('claude.ai')) {
     console.log('Claude inject')
-    // function appendDivToNewX(targetDiv) {
-    //   injectChips(targetDiv)
-    //   // const newDiv = document.createElement('div');
-    //   // newDiv.textContent = 'Appended div'; // Customize the content of the new div
-    //   // targetDiv.appendChild(newDiv);
-    // }
+    function appendDivToNewX(targetDiv) {
+      // injectChips(targetDiv)
+      // const newDiv = document.createElement('div');
+      // newDiv.textContent = 'Appended div'; // Customize the content of the new div
+      // targetDiv.appendChild(newDiv);
+
+      let labelsWrapper = document.createElement("div");
+      labelsWrapper.classList.add("module-container");
+
+      activatedChips.forEach((chip) => {
+        console.log('Inject chip', chip)
+        const name = chip.name ? chip.name: "Unnamed Module"
+        let chipElement = document.createElement("a");
+        chipElement.href = chip.link ? chip.link : "";
+        chipElement.className = "chip";
+        chipElement.classList.add("value-chip");
+        chipElement.textContent = name;     // TO-DO Query Store for the modules mapping to message
+        chipElement.target = "_blank";
+        labelsWrapper.appendChild(chipElement); 
+      })
+
+      const style = document.createElement("style");
+      style.textContent = `
+        .chip {
+          background-color: #7091E6;
+          font-size: .75rem;
+          line-height: 20px;
+          border-radius: 8px;
+          padding: 0 1rem;
+          height: 20px; 
+          display: inline-block;
+          margin: 0 0.5rem 0 0;
+        }
+        .chip:hover {
+          background-color: #3D52A0;
+        }
+      `;
+      document.head.appendChild(style);
+      targetDiv.appendChild(labelsWrapper);
+    }
   
     // Observer callback function to monitor mutations
     const observerCallback = (mutationsList) => {
@@ -316,9 +350,10 @@ function observeMessages() {
                   console.log(mutation)
                   mutation.addedNodes.forEach(node => {
                     if (node.nodeType === Node.ELEMENT_NODE) {
-                      console.log('Inject')
-                      addedChip = true
-                      injectChips(node)
+                      appendDivToNewX(node)
+                      // console.log('Inject')
+                      // addedChip = true
+                      // injectChips(node)
                     }
                   });
                 }
