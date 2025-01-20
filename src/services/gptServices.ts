@@ -17,7 +17,7 @@ export default {
         const response = await axios.post(`${constants.EMBEDDING_URL}/similarity`, data)
         console.log('Embedding Response', response)
         if (response.data) {
-            return {modules: response.data}
+            return {modules: response.data.relevant_modules}
         } else {
             return {modules: []}
         }
