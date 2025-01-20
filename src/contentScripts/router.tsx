@@ -74,7 +74,7 @@ async function routeDocuments(modules: any, prompt: any) {
 }
 
 async function routeDocumentsEmbedding(modules: any, prompt: any) {
-    const docs:Array<string> = []
+    const docs:any = {}
     const moduleNames:Array<string> = []
 
     // get embedding for prompt
@@ -84,7 +84,7 @@ async function routeDocumentsEmbedding(modules: any, prompt: any) {
 
     // SHOULD CACHE THIS AT SOME POINT 
     for (const [key, value] of Object.entries(modules)) {
-        docs.push(value.knowledge)
+        docs[key] = value
         moduleNames.push(key)
     }
 
