@@ -148,7 +148,7 @@ function chunkString(str, N) {
 
 window.fetch = async (...args) => {
   const [resource, options] = args
-  const method = options.method
+  const method = options?.method
   console.log('FETCH', method, resource)
   if (method === 'POST' && (resource.includes('backend-anon/conversation') || resource.includes('backend-api/conversation'))) {
     const newBody = JSON.parse(options.body)
