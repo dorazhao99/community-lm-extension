@@ -321,7 +321,9 @@ window.fetch = async (...args) => {
           }
           done = streamDone;
       }
-      let outputs = JSON.parse(chunks[0])
+      
+      const joinedChunks = chunks.join(" ");
+      let outputs = JSON.parse(joinedChunks)
       console.log(outputs)
       outputs.chat_messages.forEach(message => {
         if (message.sender === 'human') {

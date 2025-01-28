@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import Grid from '@mui/material/Grid2';
 import { Module } from './Module';
 import { styled, alpha } from '@mui/material/styles';
-import { Typography, Box, Button, InputBase, Toolbar, AppBar, IconButton } from '@mui/material';
+import { Typography, Box, Button, InputBase, Toolbar, AppBar, IconButton, Paper, Checkbox } from '@mui/material';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import Alert from '@mui/material/Alert';
 import SearchIcon from '@mui/icons-material/Search';
 import { AddModule } from './AddModule';
 import browser from "webextension-polyfill";
 import userServices from '~/services/userServices';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+
+import './module.css'; 
 
 interface Checked {
     [key: string]: boolean;
@@ -112,7 +115,12 @@ export function Selector(props) {
                     </Grid>
                 </Toolbar>
             </AppBar>
-            <Box sx={{height: '67vh', margin: '1em 1em'}}>
+            <Box sx={{height: '68vh', margin: '1em 1em'}}>
+                <Typography variant="h6">
+                    <strong>
+                        Teach my LLM about:
+                    </strong>
+                </Typography>
                 <Grid container sx={{ maxHeight: '67vh', overflowY: 'auto'}} justifyContent="center">
                     {
                         props.modules.map((module, idx) => {
@@ -130,6 +138,7 @@ export function Selector(props) {
                         })
                     }
                 </Grid>
+                
             </Box>
             <Grid sx={{margin: '12px 0'}} container justifyContent="center">
                 <Button 

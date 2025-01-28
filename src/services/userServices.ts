@@ -73,13 +73,22 @@ export default {
             return {success: false}
         }
     },
-    async updateCount(data: Object) {
+    async updateLogs(data: any) {
         const syncData = await browser.storage.sync.get("uid")
         const uid = syncData?.uid
         if (uid) {
-            const body = {
+            const messageData = {
                 uid: uid, 
-                sessionMessages: data
+                messageId: data?.messageId, 
+                conversationId: data?.conversationId, 
+                modules: data.modules ? data.modules : [],
+                provider: data?.provider
+            }
+
+            axios.post(`${constants.SERVER_API}/storeMessage`, messageData)
+
+            const body = {
+                uid: uid
             }
             const response = await axios.post(`${constants.SERVER_API}/updateCount`, body)
             if (response.data) {

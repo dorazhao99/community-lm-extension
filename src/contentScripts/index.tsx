@@ -75,12 +75,20 @@ window.addEventListener("change_prompt", function (evt) {
     // Update prompt with knowledge 
     const options = JSON.parse(evt.detail.options)
     const newBody = JSON.parse(options.body)
-    const origin = evt.detail.origin 
+    const origin = evt.detail.origin
+    console.log('New Body', newBody)
+
     const message = origin === 'openai' ? newBody.messages[0].content.parts : newBody.prompt
+    const messageId = origin === 'openai' ? newBody.messages[0].id : newBody.parent_message_uuid
+    const conversationId = origin === 'openai' ? newBody?.parent_message_id : ""
+
+    // TODO GET MESSAGE ID AND CONVO ID
     const originalPrompt = origin === 'openai' ? message[0] : message
 
     routeDocuments(result["knowledge"], message)
-    .then((relevantDocs) => {
+    .then((relevantDocs:any) => {
+      const moduleNames = Object.keys(relevantDocs)
+
       console.log('Relevant Docs', relevantDocs)
       let newMessage = origin === 'openai' ? [...message] : message
 
@@ -91,18 +99,14 @@ window.addEventListener("change_prompt", function (evt) {
         const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
         if (origin === 'openai') {
           newMessage = [combinedKnowledge, ...message]
+          newBody.messages[0].content.parts = newMessage
+          newBody.customFetch = true
         } else if (origin === 'claude') {
           newMessage = `<KNOLL> ${combinedKnowledge} ${message}`
+          newBody.prompt = newMessage
         }
       }
-      console.log('Message', newMessage)
-      if (origin === 'openai') {
-        newBody.messages[0].content.parts = newMessage
-        newBody.customFetch = true
-      } else if (origin === 'claude') {
-        newBody.prompt = newMessage
-      }
-      // newBody.originalMessage = message
+
       const modifiedOptions = {
           ...options,
           body: JSON.stringify(newBody),
@@ -117,9 +121,17 @@ window.addEventListener("change_prompt", function (evt) {
               }
           });
 
+      const messageData = {
+        modules: moduleNames,
+        messageId: messageId,
+        conversationId: conversationId,
+        provider: origin
+      }
+
       window.dispatchEvent(event);
       browser.runtime.sendMessage({
         type: "sent_message",
+        data: messageData
       })
     })
     .catch((error) => {

@@ -4,10 +4,6 @@ let firstScroll = true;
 let prevScrollHeight;
 let scrollCount = 0;
 
-const RequestVariables = {
-    knowledge: ['CS 547 is from 11:30-12:30 on Fridays'],
-    promptHeader: 'Here is additional knowledge that be useful for the prompt. Disregard the knowledge if not relevant.\nKnowledge:'
-  }
 
   
 // window.addEventListener("change_prompt", function (evt) {
