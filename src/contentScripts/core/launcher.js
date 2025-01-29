@@ -1,8 +1,7 @@
 const eventsManager = new EventsManager()
 Globals.tab_id = uuidv4()
-
-if (location.href.includes('chatgpt.com') || location.href.includes('claude.ai')) {
-  // We are on Twitter
+console.log('Location', location.href)
+if (location.href.includes('chatgpt.com') || location.href.includes('claude.ai') || location.href.includes('chat.deepseek.com') ) {
   chrome.storage.sync.get(['uid'], (items) => {
     let user_id = items.uid
     console.log('getting user info from local storge', items)

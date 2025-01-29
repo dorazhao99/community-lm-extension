@@ -4,7 +4,7 @@ import ReactDOM from "react-dom";
 import { onMessage } from "webext-bridge";
 import browser from "webextension-polyfill";
 import { ContentApp } from "./views/ContentApp";
-import { routeDocuments } from "./router";
+import { routeDocuments, routeDocumentsEmbedding } from "./router";
 
 
 // global variable for which modules are injected 
@@ -54,12 +54,104 @@ function createPrompt(result) {
   return allKnowledge.join("\n")
 }
 
+window.addEventListener("change_prompt_xhr", function (evt) {
+  browser.storage.local.get("knowledge").then((result) => {
+    console.log("Result", result)
+    url = window.location.href
+    if (url !== prevURL || url.includes("deepseek.com")) {
+      seenChips = {}
+      prevURL = url
+    }
+
+    if ("knowledge" in result) {
+      browser.storage.sync.set({"modules": Object.keys(result["knowledge"])}).then(() => {
+        return new Promise((resolve, reject) => {
+          resolve(null)
+        })
+      });
+    }
+
+    // Update prompt with knowledge 
+    const newBody = JSON.parse(evt.detail.body)
+    console.log('New Body', newBody, evt.detail.body)
+
+    const message = newBody.prompt
+    const messageId = origin === newBody?.parent_message_uuid
+    const conversationId = origin === newBody?.chat_session_id
+    const originalPrompt = message
+
+    routeDocumentsEmbedding(result["knowledge"], message)
+    .then((relevantDocs:any) => {
+      const moduleNames = Object.keys(relevantDocs)
+
+      console.log('Relevant Docs', relevantDocs)
+      let newMessage = message
+
+      if (Object.keys(relevantDocs).length === 0) {
+        activatedChips = []
+      } 
+      
+      const knowledge = createPrompt(relevantDocs)
+      const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
+      newMessage = `<KNOLL> ${combinedKnowledge} ${message}`
+      newBody.prompt = newMessage
+
+      console.log('newbody in index', newBody)
+      const event = new CustomEvent("send_prompt_xhr",
+          {
+              detail: {
+                  modifiedOptions: JSON.stringify(newBody), 
+                  originalPrompt: originalPrompt
+              }
+          });
+
+      const messageData = {
+        modules: moduleNames,
+        messageId: messageId,
+        conversationId: conversationId,
+        provider: evt.detail.origin
+      }
+
+      window.dispatchEvent(event);
+      browser.runtime.sendMessage({
+        type: "sent_message",
+        data: messageData
+      })
+    })
+    .catch((error) => {
+      console.log(error)
+      newBody.prompt = `<KNOLL> ${message}`
+      const event = new CustomEvent("send_prompt_xhr",
+        {
+            detail: {
+                modifiedOptions: JSON.stringify(newBody), 
+                originalPrompt: originalPrompt
+            }
+        });
+
+      window.dispatchEvent(event);
+
+      const messageData = {
+        modules: [],
+        messageId: messageId,
+        conversationId: conversationId,
+        provider: origin
+      }
+
+      browser.runtime.sendMessage({
+        type: "sent_message",
+        data: messageData
+      })
+    })
+  });
+}, false);
+
 
 window.addEventListener("change_prompt", function (evt) {
   browser.storage.local.get("knowledge").then((result) => {
     console.log("Result", result)
     url = window.location.href
-    if (url !== prevURL || url.includes("chatgpt.com") || url.includes("claude.ai")) {
+    if (url !== prevURL || url.includes("chatgpt.com") || url.includes("claude.ai") || url.includes("deepseek.com")) {
       seenChips = {}
       prevURL = url
     }
@@ -76,7 +168,7 @@ window.addEventListener("change_prompt", function (evt) {
     const options = JSON.parse(evt.detail.options)
     const newBody = JSON.parse(options.body)
     const origin = evt.detail.origin
-    console.log('New Body', newBody)
+    console.log('New Body', newBody,)
 
     const message = origin === 'openai' ? newBody.messages[0].content.parts : newBody.prompt
     const messageId = origin === 'openai' ? newBody.messages[0].id : newBody.parent_message_uuid
@@ -85,27 +177,39 @@ window.addEventListener("change_prompt", function (evt) {
     // TODO GET MESSAGE ID AND CONVO ID
     const originalPrompt = origin === 'openai' ? message[0] : message
 
-    routeDocuments(result["knowledge"], message)
+    routeDocumentsEmbedding(result["knowledge"], message)
     .then((relevantDocs:any) => {
       const moduleNames = Object.keys(relevantDocs)
 
       console.log('Relevant Docs', relevantDocs)
       let newMessage = origin === 'openai' ? [...message] : message
 
+      let knowledge; 
+      let combinedKnowledge = ''; 
+
       if (Object.keys(relevantDocs).length === 0) {
         activatedChips = []
       } else {
-        const knowledge = createPrompt(relevantDocs)
-        const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
-        if (origin === 'openai') {
-          newMessage = [combinedKnowledge, ...message]
-          newBody.messages[0].content.parts = newMessage
-          newBody.customFetch = true
-        } else if (origin === 'claude') {
-          newMessage = `<KNOLL> ${combinedKnowledge} ${message}`
-          newBody.prompt = newMessage
-        }
+        knowledge = createPrompt(relevantDocs)
+        combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
       }
+      
+      if (origin === 'openai') {
+        console.log('Message', message)
+        
+        
+        newMessage = [combinedKnowledge, ...message]
+        // make sure newMessage is not an array
+        if (Array.isArray(newMessage[1])) {
+          newMessage[1] = newMessage[1].join(' ')
+        }
+        newBody.messages[0].content.parts = newMessage
+        newBody.customFetch = true
+      } else if (origin === 'claude') {
+        newMessage = `<KNOLL> ${combinedKnowledge} ${message}`
+        newBody.prompt = newMessage
+      }
+      
 
       const modifiedOptions = {
           ...options,
@@ -138,7 +242,11 @@ window.addEventListener("change_prompt", function (evt) {
       console.log(error)
       // Proceed as if no knowledge was added 
       if (origin === 'openai') {
-        newBody.messages[0].content.parts = [message]
+        if(typeof message === 'string') {
+          newBody.messages[0].content.parts = [message]
+        } else {
+          newBody.messages[0].content.parts = message
+        }
         newBody.customFetch = true
       } else {
         newBody.prompt = `<KNOLL> ${message}`
@@ -158,8 +266,17 @@ window.addEventListener("change_prompt", function (evt) {
           });
 
       window.dispatchEvent(event);
+
+      const messageData = {
+        modules: [],
+        messageId: messageId,
+        conversationId: conversationId,
+        provider: origin
+      }
+
       browser.runtime.sendMessage({
         type: "sent_message",
+        data: messageData
       })
     })
   });
@@ -191,71 +308,53 @@ function injectChips(element:any) {
       height: 20px; 
       display: inline-block;
       margin: 0 0.5rem 0 0;
+      color: white; 
     }
     .chip:hover {
       background-color: #3D52A0;
+      color: white; 
     }
   `;
   document.head.appendChild(style);
   element.parentNode!.appendChild(labelsWrapper);
+}
 
-  // browser.storage.sync.get(["modules", "uid"]).then((result) => {
-  //   console.log("Get Chip", result)
-  //   if (result.uid) {
-  //     const modules = result.modules 
-  //     console.log("Modules", modules)
-  //     if (modules && modules.length > 0) {
-  //       let labelsWrapper = document.createElement("div");
-  //       labelsWrapper.classList.add("module-container");
+function appendDivToNewX(targetDiv) {
+  let labelsWrapper = document.createElement("div");
+  labelsWrapper.classList.add("module-container");
 
-  //       // Render chips based off of activatedChip arary 
-  //       activatedChips.forEach((chip) => {
-  //         console.log('Chip', chip)
-  //       })
+  activatedChips.forEach((chip) => {
+    console.log('Inject chip', chip)
+    const name = chip.name ? chip.name: "Unnamed Module"
+    let chipElement = document.createElement("a");
+    chipElement.href = chip.link ? chip.link : "";
+    chipElement.className = "chip";
+    chipElement.classList.add("value-chip");
+    chipElement.textContent = name;     // TO-DO Query Store for the modules mapping to message
+    chipElement.target = "_blank";
+    labelsWrapper.appendChild(chipElement); 
+  })
 
-  //       browser.storage.local.get("knowledge").then((result) => {
-  //         let knowledge:any = {}
-  //         if (result.knowledge) {
-  //           knowledge = result.knowledge
-  //         }
-  //         for (let t = 0; t < modules.length; t++) {
-  //           const moduleName:string = modules[t]
-  //           console.log('chip knowledge', knowledge)
-  //           let chipElement = document.createElement("a");
-  //           chipElement.href = knowledge[moduleName] ? knowledge[moduleName].link : "";
-  //           chipElement.className = "chip";
-  //           chipElement.classList.add("value-chip");
-  //           chipElement.textContent = knowledge[moduleName].name;     // TO-DO Query Store for the modules mapping to message
-  //           chipElement.target = "_blank";
-  //           labelsWrapper.appendChild(chipElement); 
-  //         }
-  //       })
-
-        
-  //       const style = document.createElement("style");
-  //       style.textContent = `
-  //         .chip {
-  //           background-color: #7091E6;
-  //           font-size: .75rem;
-  //           line-height: 20px;
-  //           border-radius: 8px;
-  //           padding: 0 1rem;
-  //           height: 20px; 
-  //           display: inline-block;
-  //           margin: 0 0.5rem 0 0;
-  //         }
-  //         .chip:hover {
-  //           background-color: #3D52A0;
-  //         }
-  //       `;
-  //       document.head.appendChild(style);
-  //       element.parentNode!.appendChild(labelsWrapper);
-  //     }
-  //   }
-  //   return new Promise((resolve, reject) => {
-  //     resolve(null)
-  //   })
-  // })
+  const style = document.createElement("style");
+  style.textContent = `
+    .chip {
+      background-color: #7091E6;
+      font-size: .75rem;
+      line-height: 20px;
+      border-radius: 8px;
+      padding: 0 1rem;
+      height: 20px; 
+      display: inline-block;
+      margin: 0 0.5rem 0 0;
+      color: white; 
+    }
+    .chip:hover {
+      background-color: #3D52A0;
+      color: white; 
+    }
+  `;
+  document.head.appendChild(style);
+  targetDiv.appendChild(labelsWrapper);
 }
 
 function observeMessages() {
@@ -298,8 +397,6 @@ function observeMessages() {
               if (node.classList.contains('composer-parent') && node.childNodes.length > 0 && !addedChip) {
                 const childNode = node.childNodes[0]
                 console.log('Child Node', childNode)
-                // TODO: Add chip in here
-                // injectChips(childNode)
               }
             }
           });
@@ -308,49 +405,47 @@ function observeMessages() {
       observer.observe(mainElement, config);
     }
   }
+  else if (location.includes('chat.deepseek.com')) {
+    console.log('Deepseek')
+        
+    // Observer callback function to monitor mutations
+    const observerCallback = (mutationsList) => {
+        for (const mutation of mutationsList) {
+            let addedChip = false
+            if (mutation.type === 'childList') {
+                console.log(mutation)
+                // Check added nodes for the class 'X'
+                mutation.addedNodes.forEach((node) => {
+                  if (node.nodeType === 1 && node.className.includes('ds-markdown') && !addedChip) {
+                    addedChip = true
+                    injectChips(node)
+                  }
+                });
+
+                // if (mutation.target.className === 'ds-flex' && !addedChip) {
+                //   console.log(mutation)
+                //   mutation.addedNodes.forEach(node => {
+                //     if (node.nodeType === Node.ELEMENT_NODE) {
+                //       appendDivToNewX(node)
+                //     }
+                //   });
+                // }
+            }
+        }
+    };
+    
+    // Set up the observer
+    const observer = new MutationObserver(observerCallback);
+    
+    // Start observing the document body for child node additions
+    observer.observe(document.body, {
+        childList: true, // Monitor direct children being added/removed
+        subtree: true    // Monitor changes within all descendants
+    });
+  }
   else if (window.location.href.includes('claude.ai')) {
     console.log('Claude inject')
-    function appendDivToNewX(targetDiv) {
-      // injectChips(targetDiv)
-      // const newDiv = document.createElement('div');
-      // newDiv.textContent = 'Appended div'; // Customize the content of the new div
-      // targetDiv.appendChild(newDiv);
-
-      let labelsWrapper = document.createElement("div");
-      labelsWrapper.classList.add("module-container");
-
-      activatedChips.forEach((chip) => {
-        console.log('Inject chip', chip)
-        const name = chip.name ? chip.name: "Unnamed Module"
-        let chipElement = document.createElement("a");
-        chipElement.href = chip.link ? chip.link : "";
-        chipElement.className = "chip";
-        chipElement.classList.add("value-chip");
-        chipElement.textContent = name;     // TO-DO Query Store for the modules mapping to message
-        chipElement.target = "_blank";
-        labelsWrapper.appendChild(chipElement); 
-      })
-
-      const style = document.createElement("style");
-      style.textContent = `
-        .chip {
-          background-color: #7091E6;
-          font-size: .75rem;
-          line-height: 20px;
-          border-radius: 8px;
-          padding: 0 1rem;
-          height: 20px; 
-          display: inline-block;
-          margin: 0 0.5rem 0 0;
-        }
-        .chip:hover {
-          background-color: #3D52A0;
-        }
-      `;
-      document.head.appendChild(style);
-      targetDiv.appendChild(labelsWrapper);
-    }
-  
+     
     // Observer callback function to monitor mutations
     const observerCallback = (mutationsList) => {
         for (const mutation of mutationsList) {

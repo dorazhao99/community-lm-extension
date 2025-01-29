@@ -73,6 +73,43 @@ async function routeDocuments(modules: any, prompt: any) {
    
 }
 
+async function routeDocumentsEmbedding(modules: any, prompt: any) {
+    const docs:any = {}
+    const moduleNames:Array<string> = []
+    // SHOULD CACHE THIS AT SOME POINT 
+    for (const [key, value] of Object.entries(modules)) {
+        docs[key] = value
+        moduleNames.push(key)
+    }
+
+    const promise = new Promise((resolve, reject) => {
+        browser.runtime.sendMessage({type: 'query_embeddings', data: {modules: JSON.stringify(docs), prompt: prompt} })
+        .then(response => {
+          console.log('query_embeddings response', response)
+          const returnedKnowledge:any = {}
+          if (response?.modules) {
+              response.modules.forEach(idx => {
+                    const module:string = moduleNames[idx]
+                    returnedKnowledge[module] = modules[module]
+              })
+              console.log('returned knowledge', returnedKnowledge)
+              resolve(returnedKnowledge)
+          } else {
+              resolve({})
+          }
+        })
+        .catch(error => {
+            console.log(error)
+            resolve({})
+        })
+    })
+
+    const output = await promise;
+    return output;
+   
+}
+
 export {
-    routeDocuments
+    routeDocuments,
+    routeDocumentsEmbedding
 }
