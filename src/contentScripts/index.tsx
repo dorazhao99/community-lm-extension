@@ -4,7 +4,7 @@ import ReactDOM from "react-dom";
 import { onMessage } from "webext-bridge";
 import browser from "webextension-polyfill";
 import { ContentApp } from "./views/ContentApp";
-import { routeDocuments } from "./router";
+import { routeDocuments, routeDocumentsEmbedding } from "./router";
 
 
 // global variable for which modules are injected 
@@ -85,11 +85,10 @@ window.addEventListener("change_prompt", function (evt) {
     // TODO GET MESSAGE ID AND CONVO ID
     const originalPrompt = origin === 'openai' ? message[0] : message
 
-    routeDocuments(result["knowledge"], message)
+    routeDocumentsEmbedding(result["knowledge"], message)
     .then((relevantDocs:any) => {
-      const moduleNames = Object.keys(relevantDocs)
-
       console.log('Relevant Docs', relevantDocs)
+      const moduleNames = Object.keys(relevantDocs)
       let newMessage = origin === 'openai' ? [...message] : message
 
       if (Object.keys(relevantDocs).length === 0) {
