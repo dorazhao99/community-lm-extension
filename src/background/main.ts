@@ -118,7 +118,7 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       // Update number of messages sent (currently 1 one at time).
       // TODO: Batch updates after every X amount of time
       userServices
-        .updateCount(1)
+        .updateLogs(request.data)
         .then((response) => {
           resolve(response)
         })
