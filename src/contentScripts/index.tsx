@@ -405,7 +405,7 @@ function observeMessages() {
       observer.observe(mainElement, config);
     }
   }
-  else if (location.includes('chat.deepseek.com')) {
+  else if (location.includes('deepseek.com')) {
     console.log('Deepseek')
         
     // Observer callback function to monitor mutations
