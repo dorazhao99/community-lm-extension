@@ -93,18 +93,18 @@ window.addEventListener("change_prompt", function (evt) {
 
       if (Object.keys(relevantDocs).length === 0) {
         activatedChips = []
-      } else {
-        const knowledge = createPrompt(relevantDocs)
-        const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
-        if (origin === 'openai') {
-          newMessage = [combinedKnowledge, ...message]
-          newBody.messages[0].content.parts = newMessage
-          newBody.customFetch = true
-        } else if (origin === 'claude') {
-          newMessage = `<KNOLL> ${combinedKnowledge} ${message}`
-          newBody.prompt = newMessage
-        }
+      } 
+      const knowledge = createPrompt(relevantDocs)
+      const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
+      if (origin === 'openai') {
+        newMessage = [combinedKnowledge, ...message]
+        newBody.messages[0].content.parts = newMessage
+        newBody.customFetch = true
+      } else if (origin === 'claude') {
+        newMessage = `<KNOLL> ${combinedKnowledge} ${message}`
+        newBody.prompt = newMessage
       }
+      
 
       const modifiedOptions = {
           ...options,
@@ -137,7 +137,7 @@ window.addEventListener("change_prompt", function (evt) {
       console.log(error)
       // Proceed as if no knowledge was added 
       if (origin === 'openai') {
-        newBody.messages[0].content.parts = [message]
+        newBody.messages[0].content.parts = [...message]
         newBody.customFetch = true
       } else {
         newBody.prompt = `<KNOLL> ${message}`
@@ -436,4 +436,3 @@ document.addEventListener('DOMContentLoaded', observeMessages);
   //   root
   // );
 })();
-
