@@ -96,8 +96,10 @@ window.addEventListener("change_prompt", function (evt) {
       } 
       const knowledge = createPrompt(relevantDocs)
       const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
+      console.log('combined Knowledge', combinedKnowledge, message)
       if (origin === 'openai') {
         newMessage = [combinedKnowledge, ...message]
+        console.log('new message', newMessage)
         newBody.messages[0].content.parts = newMessage
         newBody.customFetch = true
       } else if (origin === 'claude') {
@@ -137,12 +139,12 @@ window.addEventListener("change_prompt", function (evt) {
       console.log(error)
       // Proceed as if no knowledge was added 
       if (origin === 'openai') {
-        newBody.messages[0].content.parts = [...message]
+        newBody.messages[0].content.parts = [message.toString()]
         newBody.customFetch = true
       } else {
         newBody.prompt = `<KNOLL> ${message}`
       }
-      // newBody.originalMessage = message
+
       const modifiedOptions = {
           ...options,
           body: JSON.stringify(newBody),

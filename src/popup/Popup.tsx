@@ -37,16 +37,16 @@ export const Popup = () => {
       browser.runtime.sendMessage({ type: 'popup_open', data: {user: uid} })
       .then(response => {
         console.log('Response in popup', response, response.checked)
-        if (response.modules.success) {
-          setModules(response.modules.response)
-          setAllModules(response.modules.response)
+        if (response.success) {
+          setModules(response.response.modules)
+          setAllModules(response.response.modules)
+          if (response.response.checked) {
+            setChecked(response.response.checked)
+          }
         }
         // if (response.communities.success) {
         //   setCommunities(response.communities.response)
         // }
-        if (response.checked) {
-          setChecked(response.checked)
-        }
         setUser(uid)
         setLoading(false)
       })

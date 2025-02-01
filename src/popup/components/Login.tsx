@@ -16,14 +16,18 @@ export function Login() {
             type: "sign_up",
         })
     }
+    const openGuest = () => {
+        browser.runtime.sendMessage({
+            type: "guest_sign_up",
+        })
+    }
 
     return (
         <Box>
             <Grid sx={{padding: "2em 0"}} container direction="column" justifyContent={"center"} alignItems={"center"}>
                 <Grid size={8}>
                     <Typography sx={{textAlign: "center"}} variant="h4">
-                        Start using Knoll<br/>
-                        with ChatGPT.
+                        Start using Knoll
                     </Typography>
                 </Grid>
                 <Grid size={5}>
@@ -42,6 +46,15 @@ export function Login() {
                         onClick={openLogin}
                     >
                         Login
+                    </Button>
+                </Grid>
+                <Grid size={5}>
+                    <Button 
+                        sx={{borderRadius:"12px", marginTop: "2em",width: "100%"}}
+                        variant="text"
+                        onClick={openGuest}
+                    >
+                        Continue as Guest
                     </Button>
                 </Grid>
             </Grid>

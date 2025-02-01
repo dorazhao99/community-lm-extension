@@ -10,6 +10,7 @@ import { AddModule } from './AddModule';
 import browser from "webextension-polyfill";
 import userServices from '~/services/userServices';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 
 import './module.css'; 
 
@@ -23,24 +24,9 @@ export function Selector(props) {
     const [showAlert, setAlert] = useState(false)
     const [isSuccess, setSuccess] = useState(false)
 
-    useEffect(() => {
-        browser.storage.sync.get("checkedModules")
-        .then((result) => {
-            console.log('checkedModules', result)
-            if (result.checkedModules) {
-                setChecked(result.checkedModules)
-            } else {
-                // read from DB if checked is not saved in browser storage
-                userServices.fetchUserModules()
-                .then((userResponse) => {
-                    if (userResponse.success) {
-                        console.log('Read DB', userResponse.response.checked)
-                        setChecked(userResponse.response.checked)
-                    }
-                })
-            }
-        })
-    }, [])
+    const handleClick = () => {
+        window.open('https://knollapp.com/create', '_blank');
+    };
 
     const handleChange = (event, newValue) => {
         setValue(newValue);
@@ -92,36 +78,41 @@ export function Selector(props) {
             <AppBar sx={{backgroundColor: 'inherit', padding: '4px 0'}} position="static" elevation={1}>
                 <Toolbar variant="dense">
                     <Grid container sx={{justifyContent: "space-between", alignItems: "center", width: '100%'}}>
-                        <IconButton onClick={() => setOpen(!open)}>
-                            <AddCircleIcon/>
-                        </IconButton>
-                        <Box>
-                            <Grid container 
-                                sx={{
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                    border: 'solid 1px #e2e2e2',
-                                    borderRadius: '16px',
-                                    padding: '4px'
-                                }}>
-                                <SearchIcon sx={{color:"#323639"}}/>
-                                <InputBase
-                                    placeholder="Search..."
-                                    inputProps={{ 'aria-label': 'Search...' }}
-                                    onChange = {props.filterItems}
-                                />
-                            </Grid> 
-                        </Box>
+                        <Grid size={1}>
+                            <Button 
+                                variant="contained"
+                                size="small" 
+                                startIcon={<LibraryBooksIcon/>}
+                                color="success" 
+                                onClick={() => handleClick()}
+                            >
+                                New
+                            </Button>
+                        </Grid>
+                        <Grid size={8}>
+                            <Box>
+                                <Grid container 
+                                    sx={{
+                                        justifyContent: "flex-start",
+                                        alignItems: "center",
+                                        border: 'solid 1px #e2e2e2',
+                                        borderRadius: '16px',
+                                        padding: '4px'
+                                    }}>
+                                    <SearchIcon sx={{color:"#323639"}}/>
+                                    <InputBase
+                                        placeholder="Search..."
+                                        inputProps={{ 'aria-label': 'Search...' }}
+                                        onChange = {props.filterItems}
+                                    />
+                                </Grid> 
+                            </Box>
+                        </Grid>
                     </Grid>
                 </Toolbar>
             </AppBar>
-            <Box sx={{height: '68vh', margin: '1em 1em'}}>
-                <Typography variant="h6">
-                    <strong>
-                        Teach my LLM about:
-                    </strong>
-                </Typography>
-                <Grid container sx={{ maxHeight: '67vh', overflowY: 'auto'}} justifyContent="center">
+            <Box sx={{height: '72vh', margin: '1em 1em 0 1em'}}>
+                <Grid container sx={{ maxHeight: '58vh', overflowY: 'auto'}} justifyContent="center">
                     {
                         props.modules.map((module, idx) => {
                         return(
@@ -140,7 +131,7 @@ export function Selector(props) {
                 </Grid>
                 
             </Box>
-            <Grid sx={{margin: '12px 0'}} container justifyContent="center">
+            <Grid sx={{padding: '12px 0'}} container justifyContent="center">
                 <Button 
                     sx={{width: '85%'}} 
                     onClick={sendMessage} 

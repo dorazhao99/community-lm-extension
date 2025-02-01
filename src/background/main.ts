@@ -11,6 +11,32 @@ interface Cache {
   [key: any]: any;
 }
 
+const saveModules = async(request:any) => {
+  const knowledge = await moduleServices.updateKnowledge(request.data.checked, request.data.modules)
+    if (knowledge && knowledge["response"]) {
+      const response = JSON.parse(knowledge["response"]) // parse the stringified response
+      console.log("response", response)
+      let knowledgeDict:any = {}
+
+      Object.keys(response).forEach((key) => {
+        const subKnowledge = response[key].knowledge.knowledge // will be undefined for markdown files
+        knowledgeDict[key] = {
+          knowledge: subKnowledge ? subKnowledge.join("\n") : response[key].knowledge,
+          link: response[key].link,
+          name: response[key].name
+        }
+      })
+
+
+      browser.storage.local.set({"knowledge": knowledgeDict}).then(() => {
+        console.log("Value is set", knowledgeDict);
+        return new Promise((resolve, reject) => {
+          resolve(null)
+        })
+      });
+    }
+}
+
 // only on dev mode
 if (import.meta.hot) {
   // @ts-expect-error for background HMR
@@ -38,6 +64,17 @@ browser.runtime.onMessageExternal.addListener(async (message, sender, sendRespon
   } else if (message.type === 'sign_out') {
     console.log('Sign out')
     await browser.storage.sync.remove("uid")
+  } else if (message.type === 'check_exists') {
+    sendResponse({exists: true})
+  } else if (message.type === 'save') {
+    console.log('Save', message)
+    saveModules(message)
+    .then(response => {
+      sendResponse({success: true})
+    })
+    .catch(error => {
+      sendResponse({success: false})
+    })
   }
   return true
 });
@@ -45,29 +82,7 @@ browser.runtime.onMessageExternal.addListener(async (message, sender, sendRespon
 browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   console.log('request in background', request)
   if (request.type === 'save_module') {
-    const knowledge = await moduleServices.updateKnowledge(request.data.checked, request.data.modules)
-    if (knowledge && knowledge["response"]) {
-      const response = JSON.parse(knowledge["response"]) // parse the stringified response
-      console.log("response", response)
-      let knowledgeDict = {}
-
-      Object.keys(response).forEach((key) => {
-        const subKnowledge = response[key].knowledge.knowledge // will be undefined for markdown files
-        knowledgeDict[key] = {
-          knowledge: subKnowledge ? subKnowledge.join("\n") : response[key].knowledge,
-          link: response[key].link,
-          name: response[key].name
-        }
-      })
-
-
-      browser.storage.local.set({"knowledge": knowledgeDict}).then(() => {
-        console.log("Value is set", knowledgeDict);
-        return new Promise((resolve, reject) => {
-          resolve(null)
-        })
-      });
-    }
+    saveModules(request)
   } else if (request.type === 'popup_open') {
     console.log('Open Popup')
     
@@ -76,12 +91,11 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         moduleServices
           .fetchModules(request.data)
           .then((response) => {
-            const modules = response
-            resolve({modules: modules})
+            resolve(response)
           })
           .catch((error) => {
             console.error(error)
-            resolve({modules: []});
+            resolve({success: false, response: {modules: []}});
           });
       });
   } else if (request.type === 'add_module') {
@@ -108,6 +122,12 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   else if (request.type === 'sign_up') {
     console.log("open sign in")
     browser.tabs.create({ url: `${constants.URL}/signup` });
+    return new Promise((resolve, reject) => {
+      resolve(null)
+    })
+  }
+  else if (request.type === 'guest_sign_up') {
+    browser.tabs.create({ url: `${constants.URL}/guest` });
     return new Promise((resolve, reject) => {
       resolve(null)
     })

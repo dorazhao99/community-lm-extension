@@ -64,6 +64,7 @@ export default {
         const user = syncData?.uid
         
         return new Promise((resolve, reject) => {
+            console.log('Checked', checked, modules, user)
             axios.post(`${constants.SERVER_API}/get_knowledge`, {user: user, checked: checked, modules: modules})
             .then(response => {
                 if (response.data) {
