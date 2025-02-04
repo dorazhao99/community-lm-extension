@@ -176,6 +176,20 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         })
     })
   }
+  else if (request.type === 'query_embeddings_chunks') {
+    return new Promise((resolve, reject) => {
+      gptServices
+        .queryEmbeddingsChunks(request.data)
+        .then((response) => {
+          console.log('Resolve GPT', response)
+          resolve(response)
+        })
+        .catch((error) => {
+          console.error(error)
+          resolve({})
+        })
+    })
+  }
 });
 
 

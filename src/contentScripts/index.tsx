@@ -4,7 +4,7 @@ import ReactDOM from "react-dom";
 import { onMessage } from "webext-bridge";
 import browser from "webextension-polyfill";
 import { ContentApp } from "./views/ContentApp";
-import { routeDocuments, routeDocumentsEmbedding } from "./router";
+import { routeDocumentsEmbedding, routeDocumentsEmbeddingChunks } from "./utils";
 
 
 // global variable for which modules are injected 
@@ -24,22 +24,19 @@ const RequestVariables = {
     \n We provide additional knowledge that might be helpful for answering the query.
     Let's think step by step. 
     1. Check whether the knowledge is relevant to the query. If the knowledge is relevant, incorporate it when answering.
+    If the knowledge is NOT relevant, disregard the knowledge, do NOT make reference to it, and answer the query. Ignore information that is irrelevant.\n
+    2. Check whether there are conflicts in the knowledge. Report conflicts in the output if they exist.
+    \nKnowledge:<cllm>`,
+  promptHeaderChunk: `
+    <KNOLL> You are a helpful and knowledgeable assistant that provides answers to a user's query.
+    \n We provide additional knowledge that might be helpful for answering the query. Ignore information that is irrelevant.
+    Let's think step by step. 
+    1. Check whether the knowledge is relevant to the query. If the knowledge is relevant, incorporate it when answering.
     If the knowledge is NOT relevant, disregard the knowledge, do NOT make reference to it, and answer the query.\n
     2. Check whether there are conflicts in the knowledge. Report conflicts in the output if they exist.
     \nKnowledge:<cllm>`
 }
 
-// Firefox `browser.tabs.executeScript()` requires scripts return a primitive value
-// function passKnowledge(knowledge) {
-//   const knowledgeEvent = new CustomEvent('setKnowledge',
-//     {
-//       detail: {
-//         knowledge: ['test']
-//       },
-//     })
-//   console.log('Pass Knowledge', knowledge)
-//   window.dispatchEvent(knowledgeEvent)
-// }
 
 function createPrompt(result) {
   const allKnowledge:any = []
@@ -54,6 +51,110 @@ function createPrompt(result) {
   return allKnowledge.join("\n")
 }
 
+function createChips(modules:any) {
+  console.log('Create Chips', modules)
+  activatedChips = []
+  Object.keys(modules).forEach(mod => {
+    activatedChips.push(modules[mod])
+  })
+}
+
+window.addEventListener("change_prompt_chunk", function (evt) {
+  browser.storage.local.get("knowledge").then((result) => {
+    url = window.location.href
+    if (url !== prevURL || url.includes("chatgpt.com") || url.includes("claude.ai")) {
+      seenChips = {}
+      prevURL = url
+    }
+
+    if ("knowledge" in result) {
+      browser.storage.sync.set({"modules": Object.keys(result["knowledge"])}).then(() => {
+        return new Promise((resolve, reject) => {
+          resolve(null)
+        })
+      });
+    }
+
+    const options = JSON.parse(evt.detail.options)
+    const newBody = JSON.parse(options.body)
+    const origin = evt.detail.origin
+    console.log('New Body', newBody)
+
+    const message = newBody.messages[0].content.parts
+    const messageId = newBody.messages[0].id
+    const conversationId = newBody?.parent_message_id
+    const originalPrompt = message[0]
+
+    routeDocumentsEmbeddingChunks(result["knowledge"], message)
+    .then((response:any) => {
+      const moduleNames = response.modules
+      let newMessage = [...message]
+
+      if (moduleNames.length === 0) {
+        activatedChips = []
+      } 
+      const knowledge = response.knowledge
+      createChips(response.modules)
+      const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
+      console.log('combined Knowledge', combinedKnowledge, message)
+      newMessage = [combinedKnowledge, ...message]
+      console.log('new message', newMessage)
+      newBody.messages[0].content.parts = newMessage
+      newBody.customFetch = true
+      
+
+      const modifiedOptions = {
+          ...options,
+          body: JSON.stringify(newBody),
+      }
+      console.log('newbody in index', newBody)
+      const event = new CustomEvent("send_prompt",
+          {
+              detail: {
+                  resource: evt.detail.resource, 
+                  modifiedOptions: JSON.stringify(modifiedOptions), 
+                  originalPrompt: originalPrompt
+              }
+          });
+
+      const messageData = {
+        modules: moduleNames,
+        messageId: messageId,
+        conversationId: conversationId,
+        provider: origin
+      }
+
+      window.dispatchEvent(event);
+      browser.runtime.sendMessage({
+        type: "sent_message",
+        data: messageData
+      })
+    })
+    .catch((error) => {
+      console.log(error)
+      newBody.messages[0].content.parts = [message.toString()]
+      newBody.customFetch = true
+      
+      const modifiedOptions = {
+          ...options,
+          body: JSON.stringify(newBody),
+      }
+      const event = new CustomEvent("send_prompt",
+          {
+              detail: {
+                  resource: evt.detail.resource, 
+                  modifiedOptions: JSON.stringify(modifiedOptions), 
+                  originalPrompt: originalPrompt
+              }
+          });
+
+      window.dispatchEvent(event);
+      browser.runtime.sendMessage({
+        type: "sent_message",
+      })
+    })
+  });
+}, false);
 
 window.addEventListener("change_prompt", function (evt) {
   browser.storage.local.get("knowledge").then((result) => {
@@ -81,32 +182,40 @@ window.addEventListener("change_prompt", function (evt) {
     const message = origin === 'openai' ? newBody.messages[0].content.parts : newBody.prompt
     const messageId = origin === 'openai' ? newBody.messages[0].id : newBody.parent_message_uuid
     const conversationId = origin === 'openai' ? newBody?.parent_message_id : ""
-
-    // TODO GET MESSAGE ID AND CONVO ID
     const originalPrompt = origin === 'openai' ? message[0] : message
 
-    routeDocumentsEmbedding(result["knowledge"], message)
-    .then((relevantDocs:any) => {
-      console.log('Relevant Docs', relevantDocs)
-      const moduleNames = Object.keys(relevantDocs)
-      let newMessage = origin === 'openai' ? [...message] : message
+    routeDocumentsEmbedding(result["knowledge"], message, origin)
+    .then((response:any) => {
+        let moduleNames = [];
+        if (response.modules) {
+          let knowledge;
+          let newMessage = origin === 'openai' ? [...message] : message
 
-      if (Object.keys(relevantDocs).length === 0) {
-        activatedChips = []
-      } 
-      const knowledge = createPrompt(relevantDocs)
-      const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
-      console.log('combined Knowledge', combinedKnowledge, message)
-      if (origin === 'openai') {
-        newMessage = [combinedKnowledge, ...message]
-        console.log('new message', newMessage)
-        newBody.messages[0].content.parts = newMessage
-        newBody.customFetch = true
-      } else if (origin === 'claude') {
-        newMessage = `<KNOLL> ${combinedKnowledge} ${message}`
-        newBody.prompt = newMessage
+          if (Object.keys(response.modules).length === 0) {
+            activatedChips = []
+          } 
+          
+          if (response.isChunked) {
+            moduleNames = response.modules
+            console.log('Modules', moduleNames)
+            knowledge = response.knowledge
+            createChips(response.modules)
+          } else {
+            moduleNames = Object.keys(response.modules)
+            knowledge = createPrompt(response.modules)
+          }
+          const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
+          console.log('combined Knowledge', combinedKnowledge, message)
+          if (origin === 'openai') {
+            newMessage = [combinedKnowledge, ...message]
+            console.log('new message', newMessage)
+            newBody.messages[0].content.parts = newMessage
+            newBody.customFetch = true
+          } else if (origin === 'claude') {
+            newMessage = `<KNOLL> ${combinedKnowledge} ${message}`
+            newBody.prompt = newMessage
+          }
       }
-      
 
       const modifiedOptions = {
           ...options,
@@ -199,108 +308,46 @@ function injectChips(element:any) {
   `;
   document.head.appendChild(style);
   element.parentNode!.appendChild(labelsWrapper);
-
-  // browser.storage.sync.get(["modules", "uid"]).then((result) => {
-  //   console.log("Get Chip", result)
-  //   if (result.uid) {
-  //     const modules = result.modules 
-  //     console.log("Modules", modules)
-  //     if (modules && modules.length > 0) {
-  //       let labelsWrapper = document.createElement("div");
-  //       labelsWrapper.classList.add("module-container");
-
-  //       // Render chips based off of activatedChip arary 
-  //       activatedChips.forEach((chip) => {
-  //         console.log('Chip', chip)
-  //       })
-
-  //       browser.storage.local.get("knowledge").then((result) => {
-  //         let knowledge:any = {}
-  //         if (result.knowledge) {
-  //           knowledge = result.knowledge
-  //         }
-  //         for (let t = 0; t < modules.length; t++) {
-  //           const moduleName:string = modules[t]
-  //           console.log('chip knowledge', knowledge)
-  //           let chipElement = document.createElement("a");
-  //           chipElement.href = knowledge[moduleName] ? knowledge[moduleName].link : "";
-  //           chipElement.className = "chip";
-  //           chipElement.classList.add("value-chip");
-  //           chipElement.textContent = knowledge[moduleName].name;     // TO-DO Query Store for the modules mapping to message
-  //           chipElement.target = "_blank";
-  //           labelsWrapper.appendChild(chipElement); 
-  //         }
-  //       })
-
-        
-  //       const style = document.createElement("style");
-  //       style.textContent = `
-  //         .chip {
-  //           background-color: #7091E6;
-  //           font-size: .75rem;
-  //           line-height: 20px;
-  //           border-radius: 8px;
-  //           padding: 0 1rem;
-  //           height: 20px; 
-  //           display: inline-block;
-  //           margin: 0 0.5rem 0 0;
-  //         }
-  //         .chip:hover {
-  //           background-color: #3D52A0;
-  //         }
-  //       `;
-  //       document.head.appendChild(style);
-  //       element.parentNode!.appendChild(labelsWrapper);
-  //     }
-  //   }
-  //   return new Promise((resolve, reject) => {
-  //     resolve(null)
-  //   })
-  // })
 }
 
 function observeMessages() {
   activatedChips = [] // Reset chips when loading new page. 
   const location = window.location.href
-  console.log(location)
+
   if (location.includes('chatgpt.com')) {
     const mainElement = document.querySelector('main');
     if (mainElement) {
       const config = { childList: true, subtree: true };
   
       const observer = new MutationObserver((mutations) => {
-        // console.log('All Mutations', mutations)
         mutations.forEach((mutation) => {
           let addedChip = false
           mutation.addedNodes.forEach((node) => {
-            // console.log('Node', node)
-            // console.log('Mutation', mutation)
             // Check if the node added is a chat message
             if (node.nodeType === 1) {
               const attributes = node.attributes ? node.attributes : undefined
               if (attributes) {
                 const namedValue = attributes.getNamedItem("data-message-author-role");
                 if (namedValue) {
-                  // console.log('Named Value', namedValue)
                   if (namedValue.value === "assistant" && !addedChip) {
-                    // console.log('Mutation', mutation)
-                    console.log("inject chips", attributes)
+                    console.log("inject chips 1", attributes, addedChip)
                     addedChip = true
                     injectChips(node)
                   }
                 }
               } 
               if (node.classList && node.classList.contains('markdown') && !addedChip) {
-                console.log('Mutation', mutation)
-                console.log("inject chips", node.classList)
+                console.log("inject chips 2", node.classList, addedChip)
                 addedChip = true
                 injectChips(node)
               }
               if (node.classList.contains('composer-parent') && node.childNodes.length > 0 && !addedChip) {
                 const childNode = node.childNodes[0]
-                console.log('Child Node', childNode)
+                // console.log('Child Node', childNode)
                 // TODO: Add chip in here
+                // console.log("inject chips 3")
                 // injectChips(childNode)
+                // addedChip = true
               }
             }
           });
@@ -310,18 +357,11 @@ function observeMessages() {
     }
   }
   else if (window.location.href.includes('claude.ai')) {
-    console.log('Claude inject')
     function appendDivToNewX(targetDiv) {
-      // injectChips(targetDiv)
-      // const newDiv = document.createElement('div');
-      // newDiv.textContent = 'Appended div'; // Customize the content of the new div
-      // targetDiv.appendChild(newDiv);
-
       let labelsWrapper = document.createElement("div");
       labelsWrapper.classList.add("module-container");
 
       activatedChips.forEach((chip) => {
-        console.log('Inject chip', chip)
         const name = chip.name ? chip.name: "Unnamed Module"
         let chipElement = document.createElement("a");
         chipElement.href = chip.link ? chip.link : "";
@@ -357,16 +397,11 @@ function observeMessages() {
         for (const mutation of mutationsList) {
             let addedChip = false
             if (mutation.type === 'childList') {
-                console.log(mutation)
                 // Check added nodes for the class 'X'
                 if (mutation.target.className.includes('font-claude-message') && !addedChip) {
-                  console.log(mutation)
                   mutation.addedNodes.forEach(node => {
                     if (node.nodeType === Node.ELEMENT_NODE) {
                       appendDivToNewX(node)
-                      // console.log('Inject')
-                      // addedChip = true
-                      // injectChips(node)
                     }
                   });
                 }
