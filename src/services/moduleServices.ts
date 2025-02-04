@@ -27,7 +27,7 @@ export default {
             const syncData = await browser.storage.sync.get("uid")
             const user = syncData?.uid
             console.log(user)
-            const response = await axios.get(`${constants.SERVER_API}/userModule`, {
+            const response = await axios.get(`${constants.SERVER_API}/userModule_v2`, {
                 params: {user: user}
             })
             if (response.data) {

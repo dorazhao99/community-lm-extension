@@ -17,7 +17,16 @@ export default {
         const response = await axios.post(`${constants.EMBEDDING_URL}/similarity`, data)
         console.log('Embedding Response', response)
         if (response.data) {
-            return {modules: response.data.relevant_modules}
+            return {modules: response.data.relevant_modules, knowledge: response.data?.relevant_knowledge}
+        } else {
+            return {modules: []}
+        }
+    },
+    async queryEmbeddingsChunks(data:any) {
+        const response = await axios.post(`${constants.EMBEDDING_URL}/similarity_chunks`, data)
+        console.log('Embedding Response', response)
+        if (response.data) {
+            return {modules: response.data.relevant_modules, knowledge: response.data.relevant_knowledge}
         } else {
             return {modules: []}
         }

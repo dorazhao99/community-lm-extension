@@ -111,8 +111,8 @@ export function Selector(props) {
                     </Grid>
                 </Toolbar>
             </AppBar>
-            <Box sx={{height: '72vh', margin: '1em 1em 0 1em'}}>
-                <Grid container sx={{ maxHeight: '58vh', overflowY: 'auto'}} justifyContent="center">
+            <Box sx={{height: '65vh', margin: '1em 1em 0 1em'}}>
+                <Grid container sx={{ maxHeight: '60vh', overflowY: 'auto'}} justifyContent="center">
                     {
                         props.modules.map((module, idx) => {
                         return(
