@@ -1,7 +1,7 @@
 {
   "name": "Knoll",
   "displayName": "Knoll",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "description": "Build and create custom knowledge repositories that you can easily incorporate into LLMs.",
   "private": true,
   "scripts": {
@@ -80,6 +80,7 @@
     "readable-stream-clone": "^1.0.0",
     "simple-git-hooks": "^2.11.1",
     "styled-components": "^6.1.13",
+    "uuid": "^11.0.5",
     "webext-bridge": "^5.0.0",
     "webextension-polyfill": "^0.8.0"
   }

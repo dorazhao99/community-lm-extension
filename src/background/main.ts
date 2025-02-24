@@ -48,6 +48,13 @@ if (import.meta.hot) {
 browser.runtime.onInstalled.addListener(({ reason }): void => {
   console.log('Extension installed')
   if (reason === 'install') {
+    const today = new Date(); // Get the current date
+    const oneWeekFromNow = new Date();
+    oneWeekFromNow.setDate(today.getDate() + 7); 
+    const oneWeekISO = oneWeekFromNow.toISOString();
+    console.log('One week from now', oneWeekISO)
+    browser.storage.local.set({showSurveyDate: oneWeekISO });
+
     browser.tabs.update({
       url: `${constants.URL}/download`,
     })

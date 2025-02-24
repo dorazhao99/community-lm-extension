@@ -170,7 +170,6 @@ async function routeDocumentsEmbeddingChunks(modules: any, prompt: any) {
               console.log('returned knowledge', response.knowledge)
               const selectedModules: any = []
               response.modules.forEach(mod => {
-                console.log(mod)
                 selectedModules.push(modules[mod])
               })
               resolve({knowledge: response.knowledge, modules: selectedModules})
@@ -189,9 +188,16 @@ async function routeDocumentsEmbeddingChunks(modules: any, prompt: any) {
    
 }
 
+function getConversationId() {
+    const link = window.location.href
+    const parts = link.split('/')
+    return parts[parts.length - 1]
+}
+
 export {
     routeDocuments,
     routeDocumentsEmbedding,
     splitTextIntoChunks,
-    routeDocumentsEmbeddingChunks
+    routeDocumentsEmbeddingChunks,
+    getConversationId
 }

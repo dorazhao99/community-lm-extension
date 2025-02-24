@@ -82,7 +82,8 @@ export default {
                 messageId: data?.messageId, 
                 conversationId: data?.conversationId, 
                 modules: data.modules ? data.modules : [],
-                provider: data?.provider
+                provider: data?.provider,
+                message: data?.message
             }
 
             axios.post(`${constants.SERVER_API}/storeMessage`, messageData)

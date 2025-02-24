@@ -4,8 +4,8 @@ import ReactDOM from "react-dom";
 import { onMessage } from "webext-bridge";
 import browser from "webextension-polyfill";
 import { ContentApp } from "./views/ContentApp";
-import { routeDocumentsEmbedding, routeDocumentsEmbeddingChunks } from "./utils";
-
+import { routeDocumentsEmbedding, routeDocumentsEmbeddingChunks, getConversationId } from "./utils";
+import constants from "~/services/constants";
 
 // global variable for which modules are injected 
 interface Cache {
@@ -88,6 +88,7 @@ window.addEventListener("change_prompt_chunk", function (evt) {
     routeDocumentsEmbeddingChunks(result["knowledge"], message)
     .then((response:any) => {
       const moduleNames = response.modules
+      console.log('Module Names', moduleNames)
       let newMessage = [...message]
 
       if (moduleNames.length === 0) {
@@ -96,9 +97,7 @@ window.addEventListener("change_prompt_chunk", function (evt) {
       const knowledge = response.knowledge
       createChips(response.modules)
       const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
-      console.log('combined Knowledge', combinedKnowledge, message)
       newMessage = [combinedKnowledge, ...message]
-      console.log('new message', newMessage)
       newBody.messages[0].content.parts = newMessage
       newBody.customFetch = true
       
@@ -118,6 +117,7 @@ window.addEventListener("change_prompt_chunk", function (evt) {
           });
 
       const messageData = {
+        message: message,
         modules: moduleNames,
         messageId: messageId,
         conversationId: conversationId,
@@ -177,11 +177,11 @@ window.addEventListener("change_prompt", function (evt) {
     const options = JSON.parse(evt.detail.options)
     const newBody = JSON.parse(options.body)
     const origin = evt.detail.origin
-    console.log('New Body', newBody)
+    console.log('New Body', newBody, window.location)
 
     const message = origin === 'openai' ? newBody.messages[0].content.parts : newBody.prompt
     const messageId = origin === 'openai' ? newBody.messages[0].id : newBody.parent_message_uuid
-    const conversationId = origin === 'openai' ? newBody?.parent_message_id : ""
+    const conversationId = origin === 'openai' ? newBody?.parent_message_id : getConversationId()
     const originalPrompt = origin === 'openai' ? message[0] : message
 
     routeDocumentsEmbedding(result["knowledge"], message, origin)
@@ -232,6 +232,7 @@ window.addEventListener("change_prompt", function (evt) {
           });
 
       const messageData = {
+        message: message,
         modules: moduleNames,
         messageId: messageId,
         conversationId: conversationId,
@@ -275,6 +276,70 @@ window.addEventListener("change_prompt", function (evt) {
   });
 }, false);
 
+async function addSurvey() {
+  const localData = await browser.storage.local.get()
+  const currentDate = new Date()
+  const showSurveyDate = localData.showSurveyDate ? new Date(localData.showSurveyDate) : new Date()
+  const seenSurvey = localData.seenSurvey ? localData.seenSurvey : 0
+  const syncData = await browser.storage.sync.get("uid")
+  const uid = syncData?.uid 
+  if (currentDate <= showSurveyDate && seenSurvey <= 3 && uid) {
+      // add HTML for survey
+      const box = document.createElement("div");
+      box.innerText = "Thank you for using Knoll! The Stanford HCI team is running an evaluation of your experience using the system through a short survey and optional interview. Interview participants will be compensated with a $20 Amazon gift card.";
+      box.style.position = "fixed";
+      box.style.top = "10px";
+      box.style.left = "50%";
+      box.style.transform = "translateX(-50%)";
+      box.style.backgroundColor = "white";
+      box.style.color = "black";
+      box.style.padding = "10px 20px";
+      box.style.fontSize = "16px";
+      box.style.fontWeight = "bold";
+      box.style.border = "1px solid black";
+      box.style.borderRadius = "5px";
+      box.style.boxShadow = "0px 0px 10px rgba(0,0,0,0.2)";
+      box.style.zIndex = "9999";
+      box.style.display = "flex";
+      box.style.flexDirection="column";
+      box.style.alignItems = "center";
+      box.style.gap = "10px";
+  
+      let button = document.createElement("a");
+      button.href = `${constants.URL}/survey/${uid}`
+      button.className = "button";
+      button.textContent = "Survey Link";
+      button.target = "_blank";
+      button.style.backgroundColor = "#7091E6";
+      button.style.padding = "0.5rem 1rem";
+      button.style.borderRadius="12px";
+      button.style.color="white"
+      box.appendChild(button); 
+  
+      const closeButton = document.createElement("button");
+      closeButton.innerText = "✖";
+      closeButton.style.background = "white";
+      closeButton.style.color = "white";
+      closeButton.style.border = "none";
+      closeButton.style.padding = "12px";
+      closeButton.style.cursor = "pointer";
+      closeButton.style.fontSize = "14px";
+      closeButton.style.borderRadius = "50%";
+      closeButton.style.position = "absolute";
+      closeButton.style.top = "5px";
+      closeButton.style.right = "5px";
+  
+      // Add click event to remove the box
+      closeButton.onclick = () => {
+          box.remove();
+      };
+      console.log(box)
+      box.appendChild(closeButton);
+      document.body.appendChild(box);
+      browser.storage.local.set({"seenSurvey": seenSurvey + 1})
+  }
+}
+
 function injectChips(element:any) {
   let labelsWrapper = document.createElement("div");
   labelsWrapper.classList.add("module-container");
@@ -313,8 +378,14 @@ function injectChips(element:any) {
 function observeMessages() {
   activatedChips = [] // Reset chips when loading new page. 
   const location = window.location.href
-
-  if (location.includes('chatgpt.com')) {
+  console.log(location)
+  // if (location === 'https://chatgpt.com/' || location === 'https://chat.com/' || location === 'https://claude.ai' || location.includes('claude.ai/new')) {
+  //   addSurvey()
+  // }
+  if (location.includes('chatgpt.com') || location.includes('chat.com')) {
+    if (window.location.pathname === '/') {
+      addSurvey()
+    }
     const mainElement = document.querySelector('main');
     if (mainElement) {
       const config = { childList: true, subtree: true };
@@ -356,7 +427,10 @@ function observeMessages() {
       observer.observe(mainElement, config);
     }
   }
-  else if (window.location.href.includes('claude.ai')) {
+  else if (location.includes('claude.ai')) {
+    if (window.location.pathname === '/' || window.location.pathname === '/new') {
+      addSurvey()
+    }
     function appendDivToNewX(targetDiv) {
       let labelsWrapper = document.createElement("div");
       labelsWrapper.classList.add("module-container");
