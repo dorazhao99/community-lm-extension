@@ -283,10 +283,10 @@ async function addSurvey() {
   const seenSurvey = localData.seenSurvey ? localData.seenSurvey : 0
   const syncData = await browser.storage.sync.get("uid")
   const uid = syncData?.uid 
-  if (currentDate <= showSurveyDate && seenSurvey <= 3 && uid) {
+  if (currentDate >= showSurveyDate && seenSurvey <= 6 && uid) {
       // add HTML for survey
       const box = document.createElement("div");
-      box.innerText = "Thank you for using Knoll! The Stanford HCI team is running an evaluation of your experience using the system through a short survey and optional interview. Interview participants will be compensated with a $20 Amazon gift card.";
+      box.innerText = "Thank you for using Knoll! The Stanford HCI team is running an evaluation of your experience using the system through a short survey and optional interview. You will receive a $10 gift card for completing the survey.";
       box.style.position = "fixed";
       box.style.top = "10px";
       box.style.left = "50%";
@@ -379,9 +379,6 @@ function observeMessages() {
   activatedChips = [] // Reset chips when loading new page. 
   const location = window.location.href
   console.log(location)
-  // if (location === 'https://chatgpt.com/' || location === 'https://chat.com/' || location === 'https://claude.ai' || location.includes('claude.ai/new')) {
-  //   addSurvey()
-  // }
   if (location.includes('chatgpt.com') || location.includes('chat.com')) {
     if (window.location.pathname === '/') {
       addSurvey()
