@@ -22,8 +22,6 @@ interface Module {
 export default {
     async fetchModules() {
         // try {
-            console.log('Fetching all modules')
-            console.log('Server API', constants.SERVER_API)
             const syncData = await browser.storage.sync.get("uid")
             const user = syncData?.uid
             const response = await axios.get(`${constants.SERVER_API}/userModule_v2`, {
@@ -63,14 +61,26 @@ export default {
         const user = syncData?.uid
         
         return new Promise((resolve, reject) => {
-            console.log('Checked', checked, modules, user)
             axios.post(`${constants.SERVER_API}/get_knowledge`, {user: user, checked: checked, modules: modules})
             .then(response => {
                 if (response.data) {
                     const updatedKnowledge = JSON.stringify(response.data)
-                    console.log('updated knowledge', updatedKnowledge)
                     resolve({success: true, response: updatedKnowledge})
                 }
+            })
+        })
+    },
+    async addContent(data: Object) {
+        return new Promise((resolve, reject) => {
+            axios.post(`${constants.SERVER_API}/addKnowledge`, data)
+            .then(response => {
+                if (response.data) {
+                    resolve({success: true, link: response.data.link})
+                }
+            })
+            .catch(error => {
+                const response = error?.response
+                resolve({success: false, error: response.data.error})
             })
         })
     }

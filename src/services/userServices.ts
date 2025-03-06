@@ -34,14 +34,13 @@ export default {
                 return {success: false}
             }
         } else {
-            console.log('No user')
+            console.error('No user')
             return {success: false}
         }
     },
     async saveUserModules(knowledge) {
         const syncData = await browser.storage.sync.get("uid")
         const uid = syncData?.uid
-        console.log('UID', uid)
         if (uid) {
             const body = {
                 uid: uid, 
@@ -54,7 +53,7 @@ export default {
                 return {success: false}
             }
         } else {
-            console.log('No user')
+            console.error('No user')
             return {success: false}
         }
     },
@@ -69,7 +68,7 @@ export default {
                 return {success: false}
             }
         } else {
-            console.log('No user')
+            console.error('No user')
             return {success: false}
         }
     },
@@ -98,7 +97,7 @@ export default {
                 return {success: false}
             }
         } else {
-            console.log('No user')
+            console.error('No user')
             return {success: false}
         }
     }

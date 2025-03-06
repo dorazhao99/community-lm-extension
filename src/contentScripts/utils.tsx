@@ -50,13 +50,11 @@ function remove_stopwords(str:string) {
 }  
 
 async function routeDocuments(modules: any, prompt: any) {
-    console.log('Route', modules, prompt)
     const top_k = 5
     const docs = []
     const moduleNames:Array<string> = []
     for (const [key, value] of Object.entries(modules)) {
         const cleaned = escapeRegExp(remove_stopwords(value.knowledge))
-        console.log(cleaned)
         docs.push(cleaned)
         moduleNames.push(key)
     }
@@ -70,7 +68,6 @@ async function routeDocuments(modules: any, prompt: any) {
         .sort((a, b) => b.value - a.value)        
         .map(item => item.index); 
             
-    console.log(sortedIndices, result)
     const selectedModules:any = {}
     sortedIndices.slice(0, top_k).forEach((_, idx) => {
         const modName = moduleNames[idx]
@@ -80,20 +77,18 @@ async function routeDocuments(modules: any, prompt: any) {
     const promise = new Promise((resolve, reject) => {
         browser.runtime.sendMessage({type: 'query_gpt', data: {modules: JSON.stringify(selectedModules), query: prompt} })
         .then(response => {
-          console.log('query_gpt response', response)
           const returnedKnowledge:any = {}
           if (response.modules) {
               response.modules.forEach(module => {
                   returnedKnowledge[module] = modules[module]
               })
-              console.log('returned knowledge', returnedKnowledge)
               resolve(returnedKnowledge)
           } else {
               resolve({})
           }
         })
         .catch(error => {
-            console.log(error)
+            console.error(error)
             resolve({})
         })
     })
@@ -123,7 +118,6 @@ async function routeDocumentsEmbedding(modules: any, prompt: any, provider: stri
     const promise = new Promise((resolve, reject) => {
         browser.runtime.sendMessage({type: 'query_embeddings', data: {modules: JSON.stringify(docs), prompt: prompt, provider: provider} })
         .then(response => {
-          console.log('query_embeddings response', response)
           if (response.knowledge) {
             const selectedModules: any = {}
             response.modules.forEach(idx => {
@@ -138,7 +132,6 @@ async function routeDocumentsEmbedding(modules: any, prompt: any, provider: stri
                       module = moduleNames[idx]
                       returnedKnowledge[module] = modules[module]
                 })
-                console.log('returned knowledge', returnedKnowledge)
                 resolve({modules: returnedKnowledge, isChunked: false})
             } else {
                 resolve({})
@@ -165,9 +158,7 @@ async function routeDocumentsEmbeddingChunks(modules: any, prompt: any) {
     const promise = new Promise((resolve, reject) => {
         browser.runtime.sendMessage({type: 'query_embeddings_chunks', data: {modules: JSON.stringify(docs), prompt: prompt} })
         .then(response => {
-          console.log('query_embeddings response', response)
           if (response.knowledge) {
-              console.log('returned knowledge', response.knowledge)
               const selectedModules: any = []
               response.modules.forEach(mod => {
                 selectedModules.push(modules[mod])
@@ -178,7 +169,7 @@ async function routeDocumentsEmbeddingChunks(modules: any, prompt: any) {
           }
         })
         .catch(error => {
-            console.log(error)
+            console.error(error)
             resolve({})
         })
     })

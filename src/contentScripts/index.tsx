@@ -52,7 +52,6 @@ function createPrompt(result) {
 }
 
 function createChips(modules:any) {
-  console.log('Create Chips', modules)
   activatedChips = []
   Object.keys(modules).forEach(mod => {
     activatedChips.push(modules[mod])
@@ -78,7 +77,6 @@ window.addEventListener("change_prompt_chunk", function (evt) {
     const options = JSON.parse(evt.detail.options)
     const newBody = JSON.parse(options.body)
     const origin = evt.detail.origin
-    console.log('New Body', newBody)
 
     const message = newBody.messages[0].content.parts
     const messageId = newBody.messages[0].id
@@ -88,7 +86,6 @@ window.addEventListener("change_prompt_chunk", function (evt) {
     routeDocumentsEmbeddingChunks(result["knowledge"], message)
     .then((response:any) => {
       const moduleNames = response.modules
-      console.log('Module Names', moduleNames)
       let newMessage = [...message]
 
       if (moduleNames.length === 0) {
@@ -106,7 +103,7 @@ window.addEventListener("change_prompt_chunk", function (evt) {
           ...options,
           body: JSON.stringify(newBody),
       }
-      console.log('newbody in index', newBody)
+
       const event = new CustomEvent("send_prompt",
           {
               detail: {
@@ -131,7 +128,7 @@ window.addEventListener("change_prompt_chunk", function (evt) {
       })
     })
     .catch((error) => {
-      console.log(error)
+      console.error(error)
       newBody.messages[0].content.parts = [message.toString()]
       newBody.customFetch = true
       
@@ -158,7 +155,6 @@ window.addEventListener("change_prompt_chunk", function (evt) {
 
 window.addEventListener("change_prompt", function (evt) {
   browser.storage.local.get("knowledge").then((result) => {
-    console.log("Result", result)
     url = window.location.href
     if (url !== prevURL || url.includes("chatgpt.com") || url.includes("claude.ai")) {
       seenChips = {}
@@ -177,7 +173,6 @@ window.addEventListener("change_prompt", function (evt) {
     const options = JSON.parse(evt.detail.options)
     const newBody = JSON.parse(options.body)
     const origin = evt.detail.origin
-    console.log('New Body', newBody, window.location)
 
     const message = origin === 'openai' ? newBody.messages[0].content.parts : newBody.prompt
     const messageId = origin === 'openai' ? newBody.messages[0].id : newBody.parent_message_uuid
@@ -197,7 +192,6 @@ window.addEventListener("change_prompt", function (evt) {
           
           if (response.isChunked) {
             moduleNames = response.modules
-            console.log('Modules', moduleNames)
             knowledge = response.knowledge
             createChips(response.modules)
           } else {
@@ -205,10 +199,8 @@ window.addEventListener("change_prompt", function (evt) {
             knowledge = createPrompt(response.modules)
           }
           const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
-          console.log('combined Knowledge', combinedKnowledge, message)
           if (origin === 'openai') {
             newMessage = [combinedKnowledge, ...message]
-            console.log('new message', newMessage)
             newBody.messages[0].content.parts = newMessage
             newBody.customFetch = true
           } else if (origin === 'claude') {
@@ -221,7 +213,6 @@ window.addEventListener("change_prompt", function (evt) {
           ...options,
           body: JSON.stringify(newBody),
       }
-      console.log('newbody in index', newBody)
       const event = new CustomEvent("send_prompt",
           {
               detail: {
@@ -333,7 +324,6 @@ async function addSurvey() {
       closeButton.onclick = () => {
           box.remove();
       };
-      console.log(box)
       box.appendChild(closeButton);
       document.body.appendChild(box);
       browser.storage.local.set({"seenSurvey": seenSurvey + 1})
@@ -398,14 +388,12 @@ function observeMessages() {
                 const namedValue = attributes.getNamedItem("data-message-author-role");
                 if (namedValue) {
                   if (namedValue.value === "assistant" && !addedChip) {
-                    console.log("inject chips 1", attributes, addedChip)
                     addedChip = true
                     injectChips(node)
                   }
                 }
               } 
               if (node.classList && node.classList.contains('markdown') && !addedChip) {
-                console.log("inject chips 2", node.classList, addedChip)
                 addedChip = true
                 injectChips(node)
               }

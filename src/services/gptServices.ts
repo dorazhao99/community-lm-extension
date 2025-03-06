@@ -5,7 +5,6 @@ import constants from './constants';
 export default {
     async queryGPT(data:any) {
         const response = await axios.post(`${constants.SERVER_API}/queryGPT`, data)
-        console.log('GPT Response', response)
         if (response.data) {
             return {modules: response.data}
         } else {
@@ -15,7 +14,6 @@ export default {
 
     async queryEmbeddings(data:any) {
         const response = await axios.post(`${constants.EMBEDDING_URL}/similarity`, data)
-        console.log('Embedding Response', response)
         if (response.data) {
             return {modules: response.data.relevant_modules, knowledge: response.data?.relevant_knowledge}
         } else {
@@ -24,7 +22,6 @@ export default {
     },
     async queryEmbeddingsChunks(data:any) {
         const response = await axios.post(`${constants.EMBEDDING_URL}/similarity_chunks`, data)
-        console.log('Embedding Response', response)
         if (response.data) {
             return {modules: response.data.relevant_modules, knowledge: response.data.relevant_knowledge}
         } else {

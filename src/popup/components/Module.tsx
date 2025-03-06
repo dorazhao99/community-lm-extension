@@ -12,8 +12,6 @@ export function Module(props) {
         if (target.type !== "checkbox") {
             window.open(props.link, '_blank');
         }
-        // console.log(props)
-        // window.open(props.link, '_blank');
     };
 
 

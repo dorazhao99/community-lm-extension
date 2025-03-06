@@ -1,4 +1,4 @@
-console.log('FeedWizard enabled - Sampler Only')
+console.log('Knoll enabled')
 // const RequestVariables = {
 //   knowledge: ['CS 547 is from 11:30-12:30 on Fridays'],
 //   promptHeader: 'Here is additional knowledge that be useful for the prompt. Disregard the knowledge if not relevant.\nKnowledge:'
@@ -29,12 +29,9 @@ function editString(inputString, originalMessage, remove) {
               prevLines = [] // JSON is complete and parsed successfully
               // Check and modify the parts array if it exists
               if (jsonObject.v && jsonObject.v.message) {
-                console.log('JSON Object', jsonObject.v)
                 if (jsonObject.v.message.author) {
                   const author = jsonObject.v.message.author.role
-                  console.log('Author', author)
                   if (author === 'user' && jsonObject.v.message.content) {
-                    console.log('Original Message', originalMessage)
                     if (originalMessage) {
                       jsonObject.v.message.content.parts = [originalMessage];
                     }
@@ -46,7 +43,7 @@ function editString(inputString, originalMessage, remove) {
               // Reconstruct the line
               modifiedLines.push(`data: ${modifiedJsonString}`);
             } catch {
-              console.log('Cannot parse')
+              console.error('Cannot parse')
               prevLines.push(jsonString)
             }
           }
@@ -56,7 +53,7 @@ function editString(inputString, originalMessage, remove) {
           prevLines = []
       }
     } catch(error) {
-      console.log(error)
+      console.error(error)
       modifiedLines.push(line);
     }
   });
@@ -81,7 +78,6 @@ function getMsgId(inputString) {
   
           // Check and modify the parts array if it exists
           if (jsonObject.v && jsonObject.v.message) {
-            console.log('JSON Object', jsonObject.v)
             if (jsonObject.v.message.author) {
               const author = jsonObject.v.message.author.role
               if (author === 'assistant') {
@@ -91,8 +87,8 @@ function getMsgId(inputString) {
             }
           }
       } 
-    } catch {
-      console.log("error")
+    } catch(error) {
+      console.error(error)
     }
   })
   return id;
@@ -122,7 +118,6 @@ function processResponse(chunks) {
     } 
     return {edited: true, chunk: JSON.stringify(updatedChunk)}
   } catch(error) {
-    console.log('Input chunk', error)
     return {edited: false, chunk: toProcess}
   }
 }
@@ -199,7 +194,6 @@ window.fetch = async (...args) => {
                 reader.cancel(); // Clean up the original stream
                 }
             });
-            console.log('Response fully received');       
             return new Response(modifiedStream, {
                 headers: response.headers,
                 status: response.status,
@@ -220,7 +214,6 @@ window.fetch = async (...args) => {
                     if ('signal' in modifiedOptions) {
                     delete modifiedOptions['signal']
                     }
-                    console.log('modified options', modifiedOptions)
                     resolve([evt.detail.resource, modifiedOptions, evt.detail.originalPrompt])
                 };
                 window.addEventListener('send_prompt', handler)
@@ -253,7 +246,6 @@ window.fetch = async (...args) => {
                 reader.cancel(); // Clean up the original stream
                 }
             });
-            console.log('Response fully received');       
             return new Response(modifiedStream, {
                 headers: response.headers,
                 status: response.status,
@@ -287,7 +279,6 @@ window.fetch = async (...args) => {
           }
           done = streamDone;
       }
-      console.log('Response fully received'); 
       const modifiedChunks = processResponse(chunks)
       let outputs = chunks
       if (modifiedChunks.edited) {
