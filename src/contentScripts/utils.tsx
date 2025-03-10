@@ -1,6 +1,11 @@
 import BM25 from "okapibm25";
 import constants from "~/services/constants";
 
+function getByteSize(clipping:string) {
+    const blob = new Blob([JSON.stringify(clipping)]); // Convert to Blob to get size
+    return blob.size; // Return size in bytes
+}
+
 function splitTextIntoChunks(text:string, maxLength = 14800) {
     let result = [];
     let start = 0;
@@ -190,5 +195,6 @@ export {
     routeDocumentsEmbedding,
     splitTextIntoChunks,
     routeDocumentsEmbeddingChunks,
-    getConversationId
+    getConversationId,
+    getByteSize
 }
