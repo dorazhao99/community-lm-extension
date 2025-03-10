@@ -12,6 +12,7 @@ interface Cache {
 }
 
 const saveModules = async(request:any) => {
+  let currentKnowledge = await browser.storage.local.get("knowledge")
   const knowledge = await moduleServices.updateKnowledge(request.data.checked, request.data.modules)
   if (knowledge && knowledge["response"]) {
     await browser.storage.session.set({"checked": request.data.checked, "modules": request.data.modules})
@@ -27,7 +28,12 @@ const saveModules = async(request:any) => {
       }
     })
 
-
+    // add personal knowledge 
+    if (currentKnowledge && 'knowledge' in currentKnowledge) {
+      if ('personal' in currentKnowledge['knowledge']) {
+        knowledgeDict['personal'] = currentKnowledge['knowledge']['personal']
+      }
+    }
     browser.storage.local.set({"knowledge": knowledgeDict}).then(() => {
       return new Promise((resolve, reject) => {
         resolve(null)
