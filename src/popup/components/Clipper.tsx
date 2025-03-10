@@ -8,6 +8,7 @@ import Grid from '@mui/material/Grid2';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import constants from "~/services/constants";
+import { getByteSize } from "~/contentScripts/utils";
 // import { Header } from './components/Header';
 
 export const Clipper = (props) => {
@@ -39,12 +40,6 @@ export const Clipper = (props) => {
     setSelected(event.target.value);
   };
 
-  const openSignup = () => {
-        browser.runtime.sendMessage({
-            type: "sign_up",
-        })
-    }
-
   function saveContent() {
     if (selected !== 'personal' && props.isAnon) {
         setSuccess(false)
@@ -52,30 +47,41 @@ export const Clipper = (props) => {
     } else {
         // Save to Working Memory
         if (selected === 'personal') {
-            const newClipped = [...clippedKnowledge, props?.clipped]
-            setClippedKnowledge(newClipped)
-            let updatedKD = {...knowledgeDict}
-            updatedKD['personal'] = {knowledge: newClipped, link: `${constants.URL}/${props.uid}/personal`, name: 'Personal Module'}
-            browser.storage.local.set({"knowledge": updatedKD}).then(() => {
-                setSuccess(true)
-                setLink({isPersonal: true})
-                return new Promise((resolve, reject) => {
-                    resolve(null)
-                })
-            })
-            .catch(error => {
+            const numBytes = getByteSize(props?.clipped)
+            console.log(numBytes)
+            // check to make sure clipped message is not too big 
+            if (numBytes > 500000) {
                 setSuccess(false)
-                setError(error)
-            })
-            
+                setError('Clipping size too large. Must be smaller than 500KB.')
+            } else {
+                const newClipped = [...clippedKnowledge, props?.clipped]
+                let updatedKD = {...knowledgeDict}
+                updatedKD['personal'] = {knowledge: newClipped, link: `${constants.URL}/${props.uid}/personal`, name: 'Personal Module'}
+                browser.storage.local.set({"knowledge": updatedKD}).then(() => {
+                    setSuccess(true)
+                    setLink({isPersonal: true})
+                    setClippedKnowledge(newClipped)
+                    return new Promise((resolve, reject) => {
+                        resolve(null)
+                    })
+                })
+                .catch(error => {
+                    console.error(error)
+                    setSuccess(false)
+                    setError('Personal module size has exceeded quota limit. Remove knowledge from your personal module or import the information as an external module using a GitHub Markdown or Google Docs file.')
+                })     
+                browser.runtime.sendMessage({type: "log", data: {action: 'clip_personal'}})       
+            }
         } else {
             setLoading(true)
             browser.runtime.sendMessage({type: "add_content", data: {user: user, content: props?.clipped, module: selected}})
             .then(response => {
             if (response?.success) {
+                browser.runtime.sendMessage({type: "log", data: {action: 'clip_shared'}})  
                 setSuccess(true)
                 setLink({link: response.link, isPersonal: false})
                 setLoading(false)
+                
             } else {
                 setSuccess(false)
                 setError(response?.error)
@@ -83,19 +89,7 @@ export const Clipper = (props) => {
             }
             })
         }
-    }
-  }
-  
-  function clearClipped() {
-    setClippedKnowledge([])
-    let updatedKD = {...knowledgeDict}
-    if ('personal' in updatedKD) {
-        delete updatedKD['personal']
-        browser.storage.local.set({"knowledge": updatedKD}).then(() => {
-                return new Promise((resolve, reject) => {
-                  resolve(null)
-                })
-        });
+        
     }
   }
 

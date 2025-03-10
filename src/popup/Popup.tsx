@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { NavBar } from "./components/NavBar";
 import { Selector } from './components/Selector';
 import { Clipper } from "./components/Clipper";
-import { ShareClipping } from "./components/Share";
 import { PersonalModule } from "./components/PersonalModule";
 import Box from "@mui/material/Box";
 import CircularProgress from '@mui/material/CircularProgress';
@@ -125,7 +124,7 @@ export const Popup = () => {
       )
     } else if (view === 'personal') {
       return (
-        <PersonalModule changeView={setView}/>
+        <PersonalModule changeView={setView} isAnon={isAnon}/>
       )
     } else {
       return (

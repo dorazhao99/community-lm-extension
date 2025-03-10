@@ -8,7 +8,6 @@ import Alert from '@mui/material/Alert';
 import SearchIcon from '@mui/icons-material/Search';
 import { AddModule } from './AddModule';
 import browser from "webextension-polyfill";
-import userServices from '~/services/userServices';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 
@@ -23,6 +22,12 @@ export function Selector(props) {
     const [checked, setChecked] = useState(props.checked)
     const [showAlert, setAlert] = useState(false)
     const [isSuccess, setSuccess] = useState(false)
+
+    const explorePage = () => {
+        browser.runtime.sendMessage({
+            type: "explore",
+        })
+    }
 
     const handleClick = () => {
         window.open('https://knollapp.com/create', '_blank');
@@ -108,7 +113,7 @@ export function Selector(props) {
                                         Explore what other types of knowledge you can add.
                                     </strong>
                                 </Typography>
-                                <Button variant="outlined">
+                                <Button variant="outlined" onClick={explorePage}>
                                     Browse Modules
                                 </Button>
                             </Grid>
@@ -156,11 +161,11 @@ export function Selector(props) {
                         ) : null
                     }
                 </Grid>
-                <Grid size={10} textAlign="center">
+                {/* <Grid size={10} textAlign="center">
                     <Typography variant="body2">
                         Last updated at DATE
                     </Typography>
-                </Grid>
+                </Grid> */}
             </Grid>
         </Box>
     );

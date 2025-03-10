@@ -7,16 +7,20 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import IosShareIcon from '@mui/icons-material/IosShare';
 import Grid from '@mui/material/Grid2';
 import constants from "~/services/constants";
+import { getByteSize } from "~/contentScripts/utils";
 
 export const PersonalModule = (props:any) => {
   const [edit, setEdit] = useState(false)
+  const [success, setSuccess] = useState({})
+  const [share, setShare] = useState('')
+  const [open, setOpen] = useState(false)
   const [manual, setManual] = useState('')
   const [isAdd, setAdd] = useState(false)
   const [knowledgeDict, setKD] = useState({})
   const [clippedKnowledge, setClippedKnowledge] = useState([])
   
   
-  const deleteClip = (idx) => {
+  const deleteClip = (idx:number) => {
     const newClipped = [...clippedKnowledge]
     newClipped.splice(idx, 1); // Removes the element at index 2 (value 3)
     setClippedKnowledge(newClipped)
@@ -27,10 +31,14 @@ export const PersonalModule = (props:any) => {
               resolve(null)
             })
     });
+    browser.runtime.sendMessage({type: "log", data: {action: 'delete_personal'}}) 
   }
 
   const shareClip=(idx:number) => {
-    console.log("share")
+    if (idx < clippedKnowledge.length) {
+        setShare(clippedKnowledge[idx])
+        setOpen(true)
+    }
   }
 
   const onUpdate = (evt) => {
@@ -39,27 +47,34 @@ export const PersonalModule = (props:any) => {
 
   const manualSave = () => {
     if (manual.length > 0) {
-        const newClipped = [...clippedKnowledge, manual]
-        setClippedKnowledge(newClipped)
-        let updatedKD = {...knowledgeDict}
-        updatedKD['personal'] = {knowledge: newClipped, link: `${constants.URL}/${props.uid}/personal`, name: 'Personal Module'}
-        browser.storage.local.set({"knowledge": updatedKD}).then(() => {
-            return new Promise((resolve, reject) => {
-                resolve(null)
+        const numBytes = getByteSize(manual) 
+        console.log(numBytes)
+        if (numBytes > 500000) {
+            setSuccess({status: false, message: 'Entry cannot exceed 500KB in size.'})
+        } else {
+            const newClipped = [...clippedKnowledge, manual]
+            setClippedKnowledge(newClipped)
+            let updatedKD = {...knowledgeDict}
+            updatedKD['personal'] = {knowledge: newClipped, link: `${constants.URL}/${props.uid}/personal`, name: 'Personal Module'}
+            browser.storage.local.set({"knowledge": updatedKD}).then(() => {
+                return new Promise((resolve, reject) => {
+                    resolve(null)
+                })
             })
-        });
-        setManual('')
-        setAdd(!isAdd)
+            .catch(error => {
+                setSuccess({status: false, message: 'Personal module size has exceeded quota limit. Remove knowledge from your personal module or import the information as an external module using a GitHub Markdown or Google Docs file.'})
+            });
+        
+            browser.runtime.sendMessage({type: "log", data: {action: 'add_manual'}})  
+            setManual('')
+            setAdd(!isAdd)
+            setSuccess({})
+        }
     }
   }
 
   useEffect(() => {
     browser.storage.local.get(["knowledge"]).then((result) => {
-        // console.log(result)
-        // if ("clipped" in result) {
-        //   setClipped(result['clipped'])
-        //   browser.storage.local.remove("clipped");
-        // }
         if ("knowledge" in result) {
             const knowledge = result['knowledge']
             setKD(knowledge)
@@ -73,7 +88,12 @@ export const PersonalModule = (props:any) => {
 
   return (
     <Box sx={{p: 2}}>
-        <ShareClipping clipping={clippedKnowledge[0]}/>
+        <ShareClipping 
+            clipping={share}
+            open={open}
+            isAnon={props.isAnon}
+            handleClose={() => setOpen(!open)}
+        />
         <Grid container direction="column" spacing={1} alignItems="space-around">
             <Grid>
                 <Grid container direction="row" spacing={1} alignItems="center">
@@ -113,6 +133,13 @@ export const PersonalModule = (props:any) => {
                     </Grid>
                 ) : null
             }
+            {
+                ('status' in success) ? (
+                    <Alert severity="error">
+                        {success.message}
+                    </Alert>
+                ) : null
+            }
             <Grid>
                 {
                     clippedKnowledge.length > 0 ? (
@@ -120,8 +147,8 @@ export const PersonalModule = (props:any) => {
                             return (
                                 <Paper sx={{p:1, mb: 1}}>
                                     <Grid container spacing={1} justifyContent="space-around" alignItems="center">
-                                        <Grid size={11}>
-                                            <Typography variant="body2" style={{ whiteSpace: 'pre-line' }}>
+                                        <Grid size={11} sx={{maxHeight: "10em", overflowY: "auto"}}>
+                                            <Typography variant="body2" style={{ whiteSpace: 'pre-line'}}>
                                                 {clip}
                                             </Typography>
                                         </Grid>
