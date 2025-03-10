@@ -145,7 +145,8 @@ window.fetch = async (...args) => {
   const method = options?.method
   if (method === 'POST' && (resource.includes('backend-anon/conversation') || resource.includes('backend-api/conversation'))) {
     const newBody = JSON.parse(options.body)
-    const customFetch = newBody.customFetch ? true : false 
+    const customFetch = newBody.customFetch ? true : false // synthetic fetch request or not
+    console.log('Custom Fetch', customFetch)
     const extraInfo = newBody.extraInfo ? true : false
     if ('messages' in newBody && !customFetch && !extraInfo) {
         if (newBody.model === 'auto') {
@@ -212,7 +213,7 @@ window.fetch = async (...args) => {
                 const handler = (evt) => {
                     let modifiedOptions = JSON.parse(evt.detail.modifiedOptions)
                     if ('signal' in modifiedOptions) {
-                    delete modifiedOptions['signal']
+                      delete modifiedOptions['signal']
                     }
                     resolve([evt.detail.resource, modifiedOptions, evt.detail.originalPrompt])
                 };
