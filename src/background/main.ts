@@ -76,6 +76,10 @@ browser.runtime.onMessageExternal.addListener((message, sender, sendResponse) =>
   } else if (message.type === 'sign_out') {
     browser.storage.sync.remove(["uid", "isAnon"])
     browser.storage.session.remove(["checked", "modules"])
+    browser.storage.local.remove("knowledge")
+    .then(result => {
+      console.log(result, 'sign out')
+    })
     sendResponse(null)
   } else if (message.type === 'check_exists') {
     sendResponse({exists: true})
@@ -138,6 +142,12 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         resolve(null)
       })
   }
+  else if (request.type === 'link_gh') {
+    browser.tabs.create({ url: `${constants.URL}/link-github` });
+    return new Promise((resolve, reject) => {
+      resolve(null)
+    })
+}
   else if (request.type === 'sign_up') {
     browser.tabs.create({ url: `${constants.URL}/signup` });
     return new Promise((resolve, reject) => {
@@ -150,6 +160,12 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       resolve(null)
     })
   }
+  else if (request.type === 'explore') {
+    browser.tabs.create({ url: `${constants.URL}/explore` });
+    return new Promise((resolve, reject) => {
+      resolve(null)
+    })
+}
   else if (request.type === 'add_content') {
     return new Promise((resolve, reject) => {
       moduleServices
@@ -167,8 +183,23 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     return new Promise((resolve, reject) => {
       // Update number of messages sent (currently 1 one at time).
       // TODO: Batch updates after every X amount of time
+      return new Promise((resolve, reject) => {
+        userServices
+          .updateLogs(request.data)
+          .then((response) => {
+            resolve(response)
+          })
+          .catch((error) => {
+            console.error(error)
+            resolve({});
+          });
+      })
+    });
+  }
+  else if (request.type === 'create_gist') {
+    return new Promise((resolve, reject) => {
       userServices
-        .updateLogs(request.data)
+        .createGist(request.data)
         .then((response) => {
           resolve(response)
         })
@@ -176,7 +207,20 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
           console.error(error)
           resolve({});
         });
-    });
+    })
+  }
+  else if (request.type === 'log') {
+    return new Promise((resolve, reject) => {
+      userServices
+        .logAction(request.data)
+        .then((response) => {
+          resolve(response)
+        })
+        .catch((error) => {
+          console.error(error)
+          resolve({});
+        });
+    })
   }
   else if (request.type === 'query_gpt') {
     return new Promise((resolve, reject) => {
@@ -216,7 +260,7 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
           resolve({})
         })
     })
-  }
+  } 
 });
 
 // handle browser menu clicks

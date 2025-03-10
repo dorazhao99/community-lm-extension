@@ -181,11 +181,11 @@ window.addEventListener("change_prompt", function (evt) {
 
     routeDocumentsEmbedding(result["knowledge"], message, origin)
     .then((response:any) => {
+        console.log('route', response)
         let moduleNames = [];
+        let newMessage = origin === 'openai' ? [...message] : message
         if (response.modules) {
           let knowledge;
-          let newMessage = origin === 'openai' ? [...message] : message
-
           if (Object.keys(response.modules).length === 0) {
             activatedChips = []
           } 
@@ -207,6 +207,13 @@ window.addEventListener("change_prompt", function (evt) {
             newMessage = `<KNOLL> ${combinedKnowledge} ${message}`
             newBody.prompt = newMessage
           }
+      } else {
+        if (origin === 'openai') {
+          newBody.customFetch = true
+        } else if (origin === 'claude') {
+          newMessage = `<KNOLL> ${message}`
+          newBody.prompt = newMessage
+        }
       }
 
       const modifiedOptions = {
@@ -220,7 +227,8 @@ window.addEventListener("change_prompt", function (evt) {
                   modifiedOptions: JSON.stringify(modifiedOptions), 
                   originalPrompt: originalPrompt
               }
-          });
+          }
+      );
 
       const messageData = {
         message: message,
@@ -239,7 +247,8 @@ window.addEventListener("change_prompt", function (evt) {
     .catch((error) => {
       console.log(error)
       // Proceed as if no knowledge was added 
-      if (origin === 'openai') {
+      console.log('Origin', evt.detail.origin)
+      if (evt.detail.origin === 'openai') {
         newBody.messages[0].content.parts = [message.toString()]
         newBody.customFetch = true
       } else {
@@ -257,7 +266,8 @@ window.addEventListener("change_prompt", function (evt) {
                   modifiedOptions: JSON.stringify(modifiedOptions), 
                   originalPrompt: originalPrompt
               }
-          });
+          })
+      ;
 
       window.dispatchEvent(event);
       browser.runtime.sendMessage({

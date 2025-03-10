@@ -17,7 +17,7 @@ export default {
         if (response.data) {
             return {modules: response.data.relevant_modules, knowledge: response.data?.relevant_knowledge}
         } else {
-            return {modules: []}
+            return {modules: [], knowledge: ''}
         }
     },
     async queryEmbeddingsChunks(data:any) {
@@ -25,7 +25,7 @@ export default {
         if (response.data) {
             return {modules: response.data.relevant_modules, knowledge: response.data.relevant_knowledge}
         } else {
-            return {modules: []}
+            return {modules: [], knowledge: ''}
         }
     }
 }
