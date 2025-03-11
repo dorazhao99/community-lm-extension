@@ -15,6 +15,7 @@ interface Cache {
 var prevURL:string = ""; 
 var url: string=""; 
 var activatedChips:Array<Object> = []
+var relevanceScores:Array<Object> = []
 var seenChips:Cache = {}
 
 // CSS for chip
@@ -24,8 +25,8 @@ const RequestVariables = {
     \n We provide additional knowledge that might be helpful for answering the query.
     Let's think step by step. 
     1. Check whether the knowledge is relevant to the query. If the knowledge is relevant, incorporate it when answering.
-    If the knowledge is NOT relevant, disregard the knowledge, do NOT make reference to it, and answer the query. Ignore information that is irrelevant.\n
-    2. Check whether there are conflicts in the knowledge. Report conflicts in the output if they exist.
+    2. If the knowledge is NOT relevant, disregard the knowledge, do NOT make reference to it, and answer the query. Ignore information that is irrelevant. Search the web if needed.\n
+    3. Check whether there are conflicts in the knowledge. Report conflicts in the output if they exist.
     \nKnowledge:<cllm>`,
   promptHeaderChunk: `
     <KNOLL> You are a helpful and knowledgeable assistant that provides answers to a user's query.
@@ -37,25 +38,30 @@ const RequestVariables = {
     \nKnowledge:<cllm>`
 }
 
+const ALPHA_SCALE = 1.2 // scales the alpha of the chips
 
-function createPrompt(result) {
-  const allKnowledge:any = []
-  activatedChips = []
-  Object.keys(result).forEach(mod => {
-    activatedChips.push(result[mod])
-    if (!(mod in seenChips)) {
-      allKnowledge.push(result[mod].knowledge)
-      seenChips[mod] = true
-    }
-  })
-  return allKnowledge.join("\n")
-}
+// function createPrompt(result) {
+//   const allKnowledge:any = []
+//   activatedChips = []
+//   Object.keys(result).forEach(mod => {
+//     activatedChips.push(result[mod])
+//     allKnowledge.push(result[mod].knowledge)
+//   })
+//   return allKnowledge.join("\n")
+// }
 
-function createChips(modules:any) {
-  console.log('Create Chips', modules)
+function createChips(modules:any, scores:any) {
   activatedChips = []
+  relevanceScores = []
   Object.keys(modules).forEach(mod => {
+    let chipScore;
+    try {
+      chipScore = scores[mod] * ALPHA_SCALE
+    } catch {
+      chipScore = 0.3
+    }
     activatedChips.push(modules[mod])
+    relevanceScores.push(chipScore)
   })
 }
 
@@ -93,9 +99,15 @@ window.addEventListener("change_prompt_chunk", function (evt) {
 
       if (moduleNames.length === 0) {
         activatedChips = []
+        relevanceScores = []
       } 
-      const knowledge = response.knowledge
-      createChips(response.modules)
+
+      let knowledge = '';
+      if (response.knowledge) {
+        knowledge = response.knowledge
+        createChips(response.modules, response.scores)
+      }
+
       const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
       newMessage = [combinedKnowledge, ...message]
       newBody.messages[0].content.parts = newMessage
@@ -187,23 +199,23 @@ window.addEventListener("change_prompt", function (evt) {
     routeDocumentsEmbedding(result["knowledge"], message, origin)
     .then((response:any) => {
         let moduleNames = [];
+        let scores = []; 
+        let newMessage = origin === 'openai' ? [...message] : message
         if (response.modules) {
-          let knowledge;
-          let newMessage = origin === 'openai' ? [...message] : message
-
+          let knowledge = '';
           if (Object.keys(response.modules).length === 0) {
             activatedChips = []
+            relevanceScores = []
           } 
           
-          if (response.isChunked) {
+          if (response.knowledge) {
             moduleNames = response.modules
             console.log('Modules', moduleNames)
             knowledge = response.knowledge
-            createChips(response.modules)
-          } else {
-            moduleNames = Object.keys(response.modules)
-            knowledge = createPrompt(response.modules)
-          }
+            scores = response.scores
+            createChips(response.modules, scores)
+          } 
+
           const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
           console.log('combined Knowledge', combinedKnowledge, message)
           if (origin === 'openai') {
@@ -215,35 +227,42 @@ window.addEventListener("change_prompt", function (evt) {
             newMessage = `<KNOLL> ${combinedKnowledge} ${message}`
             newBody.prompt = newMessage
           }
-      }
+        } else {
+          if (origin === 'openai') {
+            newBody.customFetch = true
+          } else if (origin === 'claude') {
+            newMessage = `<KNOLL> ${message}`
+            newBody.prompt = newMessage
+          }
+        }
 
-      const modifiedOptions = {
+        const modifiedOptions = {
           ...options,
           body: JSON.stringify(newBody),
-      }
-      console.log('newbody in index', newBody)
-      const event = new CustomEvent("send_prompt",
-          {
-              detail: {
-                  resource: evt.detail.resource, 
-                  modifiedOptions: JSON.stringify(modifiedOptions), 
-                  originalPrompt: originalPrompt
-              }
-          });
+        }
+        const event = new CustomEvent("send_prompt",
+            {
+                detail: {
+                    resource: evt.detail.resource, 
+                    modifiedOptions: JSON.stringify(modifiedOptions), 
+                    originalPrompt: originalPrompt
+                }
+            }
+        );
 
-      const messageData = {
-        message: message,
-        modules: moduleNames,
-        messageId: messageId,
-        conversationId: conversationId,
-        provider: origin
-      }
+        const messageData = {
+          message: message,
+          modules: moduleNames,
+          messageId: messageId,
+          conversationId: conversationId,
+          provider: origin
+        }
 
-      window.dispatchEvent(event);
-      browser.runtime.sendMessage({
-        type: "sent_message",
-        data: messageData
-      })
+        window.dispatchEvent(event);
+        browser.runtime.sendMessage({
+          type: "sent_message",
+          data: messageData
+        })
     })
     .catch((error) => {
       console.log(error)
@@ -343,8 +362,8 @@ async function addSurvey() {
 function injectChips(element:any) {
   let labelsWrapper = document.createElement("div");
   labelsWrapper.classList.add("module-container");
-
-  activatedChips.forEach((chip) => {
+  console.log('Relevance', relevanceScores)
+  activatedChips.forEach((chip, idx) => {
     const name = chip.name ? chip.name: "Unnamed Module"
     let chipElement = document.createElement("a");
     chipElement.href = chip.link ? chip.link : "";
@@ -352,13 +371,13 @@ function injectChips(element:any) {
     chipElement.classList.add("value-chip");
     chipElement.textContent = name;     // TO-DO Query Store for the modules mapping to message
     chipElement.target = "_blank";
+    chipElement.style.backgroundColor = `rgba(112, 145, 230, ${relevanceScores[idx]})`; 
     labelsWrapper.appendChild(chipElement); 
   })
 
   const style = document.createElement("style");
   style.textContent = `
     .chip {
-      background-color: #7091E6;
       font-size: .75rem;
       line-height: 20px;
       border-radius: 8px;
@@ -378,7 +397,7 @@ function injectChips(element:any) {
 function observeMessages() {
   activatedChips = [] // Reset chips when loading new page. 
   const location = window.location.href
-  console.log(location)
+
   if (location.includes('chatgpt.com') || location.includes('chat.com')) {
     if (window.location.pathname === '/') {
       addSurvey()
@@ -386,37 +405,28 @@ function observeMessages() {
     const mainElement = document.querySelector('main');
     if (mainElement) {
       const config = { childList: true, subtree: true };
-  
+      // let addedChip = false
       const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
-          let addedChip = false
           mutation.addedNodes.forEach((node) => {
             // Check if the node added is a chat message
             if (node.nodeType === 1) {
               const attributes = node.attributes ? node.attributes : undefined
+              // if (node.classList && node.classList.contains('markdown') && !addedChip) {
+              //   addedChip = true
+              //   console.log('Chip 2', node)
+              //   injectChips(node)
+              // } 
               if (attributes) {
                 const namedValue = attributes.getNamedItem("data-message-author-role");
                 if (namedValue) {
-                  if (namedValue.value === "assistant" && !addedChip) {
-                    console.log("inject chips 1", attributes, addedChip)
-                    addedChip = true
+                  if (namedValue.value === "assistant") {
+                    // addedChip = true
+                    console.log('Chip 1', node)
                     injectChips(node)
                   }
                 }
               } 
-              if (node.classList && node.classList.contains('markdown') && !addedChip) {
-                console.log("inject chips 2", node.classList, addedChip)
-                addedChip = true
-                injectChips(node)
-              }
-              if (node.classList.contains('composer-parent') && node.childNodes.length > 0 && !addedChip) {
-                const childNode = node.childNodes[0]
-                // console.log('Child Node', childNode)
-                // TODO: Add chip in here
-                // console.log("inject chips 3")
-                // injectChips(childNode)
-                // addedChip = true
-              }
             }
           });
         });
@@ -432,7 +442,7 @@ function observeMessages() {
       let labelsWrapper = document.createElement("div");
       labelsWrapper.classList.add("module-container");
 
-      activatedChips.forEach((chip) => {
+      activatedChips.forEach((chip, idx) => {
         const name = chip.name ? chip.name: "Unnamed Module"
         let chipElement = document.createElement("a");
         chipElement.href = chip.link ? chip.link : "";
@@ -440,13 +450,13 @@ function observeMessages() {
         chipElement.classList.add("value-chip");
         chipElement.textContent = name;     // TO-DO Query Store for the modules mapping to message
         chipElement.target = "_blank";
+        chipElement.style.backgroundColor = `rgba(112, 145, 230, ${relevanceScores[idx]})`; 
         labelsWrapper.appendChild(chipElement); 
       })
 
       const style = document.createElement("style");
       style.textContent = `
         .chip {
-          background-color: #7091E6;
           font-size: .75rem;
           line-height: 20px;
           border-radius: 8px;
