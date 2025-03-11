@@ -123,24 +123,19 @@ async function routeDocumentsEmbedding(modules: any, prompt: any, provider: stri
     const promise = new Promise((resolve, reject) => {
         browser.runtime.sendMessage({type: 'query_embeddings', data: {modules: JSON.stringify(docs), prompt: prompt, provider: provider} })
         .then(response => {
+        console.log('Route Document', response)
           if (response.knowledge) {
             const selectedModules: any = {}
+            const selectedScores: any = {}
             response.modules.forEach(idx => {
                 module = moduleNames[idx]
                 selectedModules[module] = modules[module]
+                selectedScores[module] = response.scores[idx]
             })
-            resolve({knowledge: response.knowledge, modules: selectedModules, isChunked: true})
+           
+            resolve({knowledge: response.knowledge, modules: selectedModules, scores: selectedScores})
           } else {
-            const returnedKnowledge:any = {}
-            if (response.modules) {
-                response.modules.forEach(idx => {
-                      module = moduleNames[idx]
-                      returnedKnowledge[module] = modules[module]
-                })
-                resolve({modules: returnedKnowledge, isChunked: false})
-            } else {
-                resolve({})
-            }            
+            resolve({})          
           }
         })
         .catch(error => {
@@ -156,19 +151,27 @@ async function routeDocumentsEmbedding(modules: any, prompt: any, provider: stri
 
 async function routeDocumentsEmbeddingChunks(modules: any, prompt: any) {
     const docs:any = {}
+    const moduleNames:Array<string> = []
 
     for (const [key, value] of Object.entries(modules)) {
         docs[key] = value
+        moduleNames.push(key)
     }
+
+    let module;
+
     const promise = new Promise((resolve, reject) => {
         browser.runtime.sendMessage({type: 'query_embeddings_chunks', data: {modules: JSON.stringify(docs), prompt: prompt} })
         .then(response => {
           if (response.knowledge) {
-              const selectedModules: any = []
-              response.modules.forEach(mod => {
-                selectedModules.push(modules[mod])
+              const selectedModules: any = {}
+              const selectedScores: any = {}
+              response.modules.forEach(idx => {
+                module = moduleNames[idx]
+                selectedModules[module] = modules[module]
+                selectedScores[module] = response.scores[idx]
               })
-              resolve({knowledge: response.knowledge, modules: selectedModules})
+              resolve({knowledge: response.knowledge, modules: selectedModules, scores: selectedScores})
           } else {
               resolve({})
           }

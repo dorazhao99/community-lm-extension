@@ -56,7 +56,7 @@ export const Clipper = (props) => {
             } else {
                 const newClipped = [...clippedKnowledge, props?.clipped]
                 let updatedKD = {...knowledgeDict}
-                updatedKD['personal'] = {knowledge: newClipped, link: `${constants.URL}/${props.uid}/personal`, name: 'Personal Module'}
+                updatedKD['personal'] = {knowledge: newClipped, link: `${constants.URL}/personal`, name: 'Personal Module'}
                 browser.storage.local.set({"knowledge": updatedKD}).then(() => {
                     setSuccess(true)
                     setLink({isPersonal: true})

@@ -44,7 +44,7 @@ export async function getManifest() {
     content_scripts: [
       {
         // matches: ['*://chatgpt.com/*', '*://knollapp.com/*', '*://api.knollapp.com/*', "*://localhost/*"],
-        // matches: ['*://chatgpt.com/*', '*://knollapp.com/*', '*://api.knollapp.com/*', '*://embed.knollapp.com/*', '*://claude.ai/*'],
+        // matches: ['*://chat.com/*', '*://chatgpt.com/*', '*://knollapp.com/*', '*://api.knollapp.com/*', '*://embed.knollapp.com/*', '*://claude.ai/*'],
         matches: ['*://chat.com/*', '*://chatgpt.com/*', '*://knollapp.com/*', '*://api.knollapp.com/*', '*://embed.knollapp.com/*', '*://claude.ai/*', "*://localhost/*"],
         js: [
           'dist/contentScripts/index.global.js',

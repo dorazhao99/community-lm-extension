@@ -25,7 +25,7 @@ export const PersonalModule = (props:any) => {
     newClipped.splice(idx, 1); // Removes the element at index 2 (value 3)
     setClippedKnowledge(newClipped)
     let updatedKD:any = {...knowledgeDict}
-    updatedKD['personal'] = {knowledge: newClipped, link: `${constants.URL}/${props.uid}/personal`, name: 'Personal Module'}
+    updatedKD['personal'] = {knowledge: newClipped, link: `${constants.URL}/personal`, name: 'Personal Module'}
     browser.storage.local.set({"knowledge": updatedKD}).then(() => {
             return new Promise((resolve, reject) => {
               resolve(null)
@@ -55,7 +55,7 @@ export const PersonalModule = (props:any) => {
             const newClipped = [...clippedKnowledge, manual]
             setClippedKnowledge(newClipped)
             let updatedKD = {...knowledgeDict}
-            updatedKD['personal'] = {knowledge: newClipped, link: `${constants.URL}/${props.uid}/personal`, name: 'Personal Module'}
+            updatedKD['personal'] = {knowledge: newClipped, link: `${constants.URL}/personal`, name: 'Personal Module'}
             browser.storage.local.set({"knowledge": updatedKD}).then(() => {
                 return new Promise((resolve, reject) => {
                     resolve(null)
@@ -147,7 +147,7 @@ export const PersonalModule = (props:any) => {
                             return (
                                 <Paper sx={{p:1, mb: 1}}>
                                     <Grid container spacing={1} justifyContent="space-around" alignItems="center">
-                                        <Grid size={11} sx={{maxHeight: "10em", overflowY: "auto"}}>
+                                        <Grid size={11} sx={{maxHeight: "10em", overflowY: "auto", maxWidth: "80vw"}}>
                                             <Typography variant="body2" style={{ whiteSpace: 'pre-line'}}>
                                                 {clip}
                                             </Typography>
