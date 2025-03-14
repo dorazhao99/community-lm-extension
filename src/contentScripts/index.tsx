@@ -9,14 +9,14 @@ import constants from "~/services/constants";
 
 // global variable for which modules are injected 
 interface Cache {
-  [key: number]: boolean;
+  [key: string]: boolean;
 }
 
 var prevURL:string = ""; 
 var url: string=""; 
 var activatedChips:Array<Object> = []
 var relevanceScores:Array<Object> = []
-var seenKnowledge:unknown = {}
+var seenKnowledge:Cache = {}
 var prevMessage = ""
 
 // CSS for chip
@@ -69,9 +69,16 @@ function createChips(modules:any, scores:any) {
 window.addEventListener("change_prompt_chunk", function (evt) {
   browser.storage.local.get("knowledge").then((result) => {
     url = window.location.href
-    if (url !== prevURL || url.includes("chatgpt.com") || url.includes("claude.ai")) {
-      // seenKnowledge= {}
-      prevURL = url
+    console.log(url, prevURL)
+    if (url !== prevURL) {
+      const gptPattern = /^https:\/\/chatgpt\.com\/c\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+      const claudePattern = /^https:\/\/claude\.ai\/chat\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+      
+      // New chat window --> reset
+      if (gptPattern.test(prevURL) || claudePattern.test(prevURL)) {
+        seenKnowledge = {}
+        prevMessage = ''
+      }
     }
 
     if ("knowledge" in result) {
@@ -91,10 +98,11 @@ window.addEventListener("change_prompt_chunk", function (evt) {
     const conversationId = newBody?.parent_message_id
     const originalPrompt = message[0]
 
-    routeDocumentsEmbeddingChunks(result["knowledge"], message)
+    routeDocumentsEmbeddingChunks(result["knowledge"], message, prevMessage, seenKnowledge)
     .then((response:any) => {
       const moduleNames = response.modules
       let newMessage = [...message]
+      prevMessage = newMessage.join(' ')
 
       if (moduleNames.length === 0) {
         activatedChips = []
@@ -104,6 +112,8 @@ window.addEventListener("change_prompt_chunk", function (evt) {
       let knowledge = '';
       if (response.knowledge) {
         knowledge = response.knowledge
+        seenKnowledge = response.seenKnowledge
+        console.log('seenKnowledge chunk', seenKnowledge)
         createChips(response.modules, response.scores)
       }
 
@@ -169,12 +179,14 @@ window.addEventListener("change_prompt_chunk", function (evt) {
 window.addEventListener("change_prompt", function (evt) {
   browser.storage.local.get("knowledge").then((result) => {
     url = window.location.href
-    console.log(url, prevURL)
     if (url !== prevURL) {
       const gptPattern = /^https:\/\/chatgpt\.com\/c\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
       const claudePattern = /^https:\/\/claude\.ai\/chat\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+
+      // New window --> reset seen knowledge and previous message
       if (gptPattern.test(prevURL) || claudePattern.test(prevURL)) {
         seenKnowledge = {}
+        prevMessage = ''
       }
     }
 
@@ -333,7 +345,7 @@ async function addSurvey() {
       box.style.gap = "10px";
   
       let button = document.createElement("a");
-      button.href = "https://docs.google.com/forms/d/e/1FAIpQLSe6aPFtE_tD-VVRbfqv0QlcRgWUIwbr8_jLOZaeln_rVt8oKg/viewform?usp=sharing"
+      button.href = `${constants.URL}/survey-signup/${uid}`
       button.className = "button";
       button.textContent = "Sign Up";
       button.target = "_blank";

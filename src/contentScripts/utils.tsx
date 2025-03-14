@@ -156,7 +156,7 @@ async function routeDocumentsEmbedding(modules: any, prompt: unknown, prevMessag
    
 }
 
-async function routeDocumentsEmbeddingChunks(modules: any, prompt: any) {
+async function routeDocumentsEmbeddingChunks(modules: any, prompt: any, prevMessage: string, seenKnowledge: unknown) {
     const docs:any = {}
     const moduleNames:Array<string> = []
 
@@ -168,7 +168,14 @@ async function routeDocumentsEmbeddingChunks(modules: any, prompt: any) {
     let module;
 
     const promise = new Promise((resolve, reject) => {
-        browser.runtime.sendMessage({type: 'query_embeddings_chunks', data: {modules: JSON.stringify(docs), prompt: prompt} })
+        let combinedPrompt = prompt 
+        try {
+            combinedPrompt = prevMessage + ' ' + prompt
+        } catch {
+            console.log('Error combining prompt', combinedPrompt, prevMessage)
+        }
+        
+        browser.runtime.sendMessage({type: 'query_embeddings_chunks', data: {modules: JSON.stringify(docs), prompt: prompt, seenKnowledge: seenKnowledge} })
         .then(response => {
           if (response.knowledge) {
               const selectedModules: any = {}
@@ -178,7 +185,7 @@ async function routeDocumentsEmbeddingChunks(modules: any, prompt: any) {
                 selectedModules[module] = modules[module]
                 selectedScores[module] = response.scores[idx]
               })
-              resolve({knowledge: response.knowledge, modules: selectedModules, scores: selectedScores})
+              resolve({knowledge: response.knowledge, modules: selectedModules, scores: selectedScores, seenKnowledge: response.seenKnowledge})
           } else {
               resolve({})
           }

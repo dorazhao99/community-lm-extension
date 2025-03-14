@@ -60,11 +60,11 @@ export default {
                     }, 500);
                 });
             } else {
-                return { modules: [], knowledge: '' };
+                return { modules: [], knowledge: '', seenKnowledge: data.seenKnowledge };
             }
         } catch (error) {
             console.error('Error querying embeddings:', error);
-            return { modules: [], knowledge: '' };
+            return { modules: [], knowledge: '', seenKnowledge: data.seenKnowledge };
         }
 
     },
@@ -89,7 +89,8 @@ export default {
                                 resolve({
                                     modules: results.relevant_modules,
                                     knowledge: results.relevant_knowledge,
-                                    scores: results.scores
+                                    scores: results.scores,
+                                    seenKnowledge: results.seen_knowledge
                                 });
                             } else if (statusData.data.status === 'FAILURE') {
                                 // Task failed
@@ -98,7 +99,8 @@ export default {
                                 resolve({
                                     modules: [],
                                     knowledge: [],
-                                    scores: []
+                                    scores: [],
+                                    seenKnowledge: data.seenKnowledge
                                 })
                             }
                         } catch (error) {
@@ -107,17 +109,18 @@ export default {
                             resolve({
                                 modules: [],
                                 knowledge: [],
-                                scores: []
+                                scores: [],
+                                seenKnowledge: data.seenKnowledge
                             })
                         }
                     }, 500);
                 });
             } else {
-                return { modules: [], knowledge: '' };
+                return { modules: [], knowledge: '', seenKnowledge: data.seenKnowledge };
             }
         } catch (error) {
             console.error('Error querying embeddings:', error);
-            return { modules: [], knowledge: '' };
+            return { modules: [], knowledge: '', seenKnowledge: data.seenKnowledge };
         }
     }
 }
