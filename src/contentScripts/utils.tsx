@@ -103,7 +103,7 @@ async function routeDocuments(modules: any, prompt: any) {
    
 }
 
-async function routeDocumentsEmbedding(modules: any, prompt: any, provider: string) {
+async function routeDocumentsEmbedding(modules: any, prompt: unknown, prevMessage: string, provider: string, seenKnowledge: unknown) {
     const docs:any = {}
     const moduleNames:Array<string> = []
 
@@ -121,7 +121,14 @@ async function routeDocumentsEmbedding(modules: any, prompt: any, provider: stri
     let module;
 
     const promise = new Promise((resolve, reject) => {
-        browser.runtime.sendMessage({type: 'query_embeddings', data: {modules: JSON.stringify(docs), prompt: prompt, provider: provider} })
+        let combinedPrompt = prompt 
+        try {
+            combinedPrompt = prevMessage + ' ' + prompt
+        } catch {
+            console.log('Error combining prompt', combinedPrompt, prevMessage)
+        }
+
+        browser.runtime.sendMessage({type: 'query_embeddings', data: {modules: JSON.stringify(docs), prompt: combinedPrompt, provider: provider, seenKnowledge: seenKnowledge} })
         .then(response => {
         console.log('Route Document', response)
           if (response.knowledge) {
@@ -133,7 +140,7 @@ async function routeDocumentsEmbedding(modules: any, prompt: any, provider: stri
                 selectedScores[module] = response.scores[idx]
             })
            
-            resolve({knowledge: response.knowledge, modules: selectedModules, scores: selectedScores})
+            resolve({knowledge: response.knowledge, modules: selectedModules, scores: selectedScores, seenKnowledge: response.seenKnowledge})
           } else {
             resolve({})          
           }

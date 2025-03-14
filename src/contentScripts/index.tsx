@@ -9,14 +9,15 @@ import constants from "~/services/constants";
 
 // global variable for which modules are injected 
 interface Cache {
-  [key: string]: boolean;
+  [key: number]: boolean;
 }
 
 var prevURL:string = ""; 
 var url: string=""; 
 var activatedChips:Array<Object> = []
 var relevanceScores:Array<Object> = []
-var seenChips:Cache = {}
+var seenKnowledge:unknown = {}
+var prevMessage = ""
 
 // CSS for chip
 const RequestVariables = {
@@ -69,7 +70,7 @@ window.addEventListener("change_prompt_chunk", function (evt) {
   browser.storage.local.get("knowledge").then((result) => {
     url = window.location.href
     if (url !== prevURL || url.includes("chatgpt.com") || url.includes("claude.ai")) {
-      seenChips = {}
+      // seenKnowledge= {}
       prevURL = url
     }
 
@@ -110,7 +111,6 @@ window.addEventListener("change_prompt_chunk", function (evt) {
       newMessage = [combinedKnowledge, ...message]
       newBody.messages[0].content.parts = newMessage
       newBody.customFetch = true
-      
 
       const modifiedOptions = {
           ...options,
@@ -169,10 +169,16 @@ window.addEventListener("change_prompt_chunk", function (evt) {
 window.addEventListener("change_prompt", function (evt) {
   browser.storage.local.get("knowledge").then((result) => {
     url = window.location.href
-    if (url !== prevURL || url.includes("chatgpt.com") || url.includes("claude.ai")) {
-      seenChips = {}
-      prevURL = url
+    console.log(url, prevURL)
+    if (url !== prevURL) {
+      const gptPattern = /^https:\/\/chatgpt\.com\/c\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+      const claudePattern = /^https:\/\/claude\.ai\/chat\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+      if (gptPattern.test(prevURL) || claudePattern.test(prevURL)) {
+        seenKnowledge = {}
+      }
     }
+
+    prevURL = url
 
     if ("knowledge" in result) {
       browser.storage.sync.set({"modules": Object.keys(result["knowledge"])}).then(() => {
@@ -192,12 +198,16 @@ window.addEventListener("change_prompt", function (evt) {
     const conversationId = origin === 'openai' ? newBody?.parent_message_id : getConversationId()
     const originalPrompt = origin === 'openai' ? message[0] : message
 
-    routeDocumentsEmbedding(result["knowledge"], message, origin)
+    console.log('seenKnowledge', seenKnowledge)
+    routeDocumentsEmbedding(result["knowledge"], message, prevMessage, origin, seenKnowledge)
     .then((response:any) => {
         console.log('route', response)
         let moduleNames = [];
         let scores = []; 
         let newMessage = origin === 'openai' ? [...message] : message
+        prevMessage = origin === 'openai' ? newMessage.join(' ') : newMessage
+        console.log('Previous Message', prevMessage)
+        
         if (response.modules) {
           let knowledge = '';
           if (Object.keys(response.modules).length === 0) {
@@ -209,6 +219,8 @@ window.addEventListener("change_prompt", function (evt) {
             moduleNames = response.modules
             knowledge = response.knowledge
             scores = response.scores
+            seenKnowledge = response.seenKnowledge
+            console.log('seenKnowledge 2', seenKnowledge)
             createChips(response.modules, scores)
           } 
 
@@ -416,8 +428,6 @@ function observeMessages() {
                 const namedValue = attributes.getNamedItem("data-message-author-role");
                 if (namedValue) {
                   if (namedValue.value === "assistant") {
-                    // addedChip = true
-                    console.log('Chip 1', node)
                     injectChips(node)
                   }
                 }
