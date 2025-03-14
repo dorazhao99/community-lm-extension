@@ -333,9 +333,9 @@ async function addSurvey() {
       box.style.gap = "10px";
   
       let button = document.createElement("a");
-      button.href = `${constants.URL}/survey/${uid}`
+      button.href = "https://docs.google.com/forms/d/e/1FAIpQLSe6aPFtE_tD-VVRbfqv0QlcRgWUIwbr8_jLOZaeln_rVt8oKg/viewform?usp=sharing"
       button.className = "button";
-      button.textContent = "Survey Link";
+      button.textContent = "Sign Up";
       button.target = "_blank";
       button.style.backgroundColor = "#7091E6";
       button.style.padding = "0.5rem 1rem";
