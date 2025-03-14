@@ -72,11 +72,12 @@ export const ShareClipping= (props:any) => {
                 data: {clipping: props.clipping}
             })
             .then(response => {
-                console.log(response)
+                console.log('Create response', response)
                 browser.runtime.sendMessage({type: "log", data: {action: 'share_github'}}) 
-                setShareUrl(response.response.url)
+                setShareUrl(response.data.url)
             })
             .catch(error => {
+                console.error('Error', error)
                 setSuccess(1)
                 setNumber(0)
                 setMessage('Error creating Github Gist. Please try again later.')
