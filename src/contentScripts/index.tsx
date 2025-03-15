@@ -26,7 +26,7 @@ const RequestVariables = {
     \n We provide additional knowledge that might be helpful for answering the query.
     Let's think step by step. 
     1. Check whether the knowledge is relevant to the query. If the knowledge is relevant, incorporate it when answering.
-    2. If the knowledge is NOT relevant, disregard the knowledge, do NOT make reference to it, and answer the query. Ignore information that is irrelevant. Search the web if needed.\n
+    2. If the knowledge is NOT relevant, disregard the knowledge, do NOT make reference to it, and answer the query. Ignore information that is irrelevant. Do NOT search the web if you have sufficient knowledge.\n
     3. Check whether there are conflicts in the knowledge. Report conflicts in the output if they exist.
     \nKnowledge:<cllm>`,
   promptHeaderChunk: `
@@ -34,7 +34,7 @@ const RequestVariables = {
     \n We provide additional knowledge that might be helpful for answering the query. Ignore information that is irrelevant.
     Let's think step by step. 
     1. Check whether the knowledge is relevant to the query. If the knowledge is relevant, incorporate it when answering.
-    If the knowledge is NOT relevant, disregard the knowledge, do NOT make reference to it, and answer the query.\n
+    If the knowledge is NOT relevant, disregard the knowledge, do NOT make reference to it, and answer the query. Do NOT search the web if you have sufficient knowledge.\n
     2. Check whether there are conflicts in the knowledge. Report conflicts in the output if they exist.
     \nKnowledge:<cllm>`
 }
@@ -322,10 +322,10 @@ async function addSurvey() {
   const seenSurvey = localData.seenSurvey ? localData.seenSurvey : 0
   const syncData = await browser.storage.sync.get("uid")
   const uid = syncData?.uid 
-  if (currentDate >= showSurveyDate && seenSurvey <= 6 && uid) {
+  if (true) {
       // add HTML for survey
       const box = document.createElement("div");
-      box.innerText = "Thank you for using Knoll! The Stanford HCI team is running an evaluation of your experience using the system through a short survey and optional interview. You will receive a $10 gift card for completing the survey.";
+      box.innerText = "Thank you for using Knoll! The Stanford HCI team is running an evaluation of your experience using the system through a <10 minute survey and optional interview. You will receive a $10 gift card for completing the survey.";
       box.style.position = "fixed";
       box.style.top = "10px";
       box.style.left = "50%";
