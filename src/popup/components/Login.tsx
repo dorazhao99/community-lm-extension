@@ -27,10 +27,12 @@ export function Login() {
             <Grid sx={{padding: "2em 0"}} container direction="column" justifyContent={"center"} alignItems={"center"}>
                 <Grid size={8}>
                     <Typography sx={{textAlign: "center"}} variant="h4">
-                        Start using Knoll
+                        <strong>
+                            Welcome to Knoll!
+                        </strong>
                     </Typography>
                 </Grid>
-                <Grid size={5}>
+                {/* <Grid size={5}>
                     <Button 
                         sx={{borderRadius:"12px", marginTop: "2em",width: "100%"}}
                         variant="contained"
@@ -47,14 +49,14 @@ export function Login() {
                     >
                         Login
                     </Button>
-                </Grid>
+                </Grid> */}
                 <Grid size={5}>
                     <Button 
                         sx={{borderRadius:"12px", marginTop: "2em",width: "100%"}}
-                        variant="text"
+                        variant="contained"
                         onClick={openGuest}
                     >
-                        Continue as Guest
+                        Get Started &rarr;
                     </Button>
                 </Grid>
             </Grid>

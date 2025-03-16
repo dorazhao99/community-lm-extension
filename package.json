@@ -1,7 +1,7 @@
 {
   "name": "Knoll",
   "displayName": "Knoll",
-  "version": "0.2.2",
+  "version": "0.2.6",
   "description": "Build and create custom knowledge repositories that you can easily incorporate into LLMs.",
   "private": true,
   "scripts": {
@@ -78,6 +78,7 @@
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "readable-stream-clone": "^1.0.0",
+    "redux": "^5.0.1",
     "simple-git-hooks": "^2.11.1",
     "styled-components": "^6.1.13",
     "uuid": "^11.0.5",

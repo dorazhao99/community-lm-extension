@@ -31,7 +31,6 @@ export function AddModule(props) {
     const handleSubmit = () => {
         const llmMessage = endsWithLLM()
         setLLMHelper(llmMessage)
-        console.log('LLM message')
         if (llmMessage.length === 0) {
             const data = {
                 llmLink: link,
@@ -42,7 +41,6 @@ export function AddModule(props) {
                 data: data
             })
             .then((response) => {
-                console.log(response, response.response.success, response.response)
                 if (response.response.success) {
                     setSuccess("success")
                     props.reloadModules()
@@ -52,12 +50,11 @@ export function AddModule(props) {
                 }
             })
             .catch((error) => {
-                console.log('Error saving module', error)
+                console.error('Error saving module', error)
                 setSuccess("error")
                 setMessage("There was an error saving the module")
             });
         } else {
-            console.log(llmMessage)
             setSuccess("error")
             setMessage("Check the module you are inputting again before submitting.")
         }

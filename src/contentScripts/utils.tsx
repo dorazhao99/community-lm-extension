@@ -1,6 +1,11 @@
 import BM25 from "okapibm25";
 import constants from "~/services/constants";
 
+function getByteSize(clipping:string) {
+    const blob = new Blob([JSON.stringify(clipping)]); // Convert to Blob to get size
+    return blob.size; // Return size in bytes
+}
+
 function splitTextIntoChunks(text:string, maxLength = 14800) {
     let result = [];
     let start = 0;
@@ -50,13 +55,11 @@ function remove_stopwords(str:string) {
 }  
 
 async function routeDocuments(modules: any, prompt: any) {
-    console.log('Route', modules, prompt)
     const top_k = 5
     const docs = []
     const moduleNames:Array<string> = []
     for (const [key, value] of Object.entries(modules)) {
         const cleaned = escapeRegExp(remove_stopwords(value.knowledge))
-        console.log(cleaned)
         docs.push(cleaned)
         moduleNames.push(key)
     }
@@ -70,7 +73,6 @@ async function routeDocuments(modules: any, prompt: any) {
         .sort((a, b) => b.value - a.value)        
         .map(item => item.index); 
             
-    console.log(sortedIndices, result)
     const selectedModules:any = {}
     sortedIndices.slice(0, top_k).forEach((_, idx) => {
         const modName = moduleNames[idx]
@@ -80,20 +82,18 @@ async function routeDocuments(modules: any, prompt: any) {
     const promise = new Promise((resolve, reject) => {
         browser.runtime.sendMessage({type: 'query_gpt', data: {modules: JSON.stringify(selectedModules), query: prompt} })
         .then(response => {
-          console.log('query_gpt response', response)
           const returnedKnowledge:any = {}
           if (response.modules) {
               response.modules.forEach(module => {
                   returnedKnowledge[module] = modules[module]
               })
-              console.log('returned knowledge', returnedKnowledge)
               resolve(returnedKnowledge)
           } else {
               resolve({})
           }
         })
         .catch(error => {
-            console.log(error)
+            console.error(error)
             resolve({})
         })
     })
@@ -103,7 +103,7 @@ async function routeDocuments(modules: any, prompt: any) {
    
 }
 
-async function routeDocumentsEmbedding(modules: any, prompt: any, provider: string) {
+async function routeDocumentsEmbedding(modules: any, prompt: unknown, prevMessage: string, provider: string, seenKnowledge: unknown) {
     const docs:any = {}
     const moduleNames:Array<string> = []
 
@@ -121,7 +121,14 @@ async function routeDocumentsEmbedding(modules: any, prompt: any, provider: stri
     let module;
 
     const promise = new Promise((resolve, reject) => {
-        browser.runtime.sendMessage({type: 'query_embeddings', data: {modules: JSON.stringify(docs), prompt: prompt, provider: provider} })
+        let combinedPrompt = prompt 
+        try {
+            combinedPrompt = prevMessage + ' ' + prompt
+        } catch {
+            console.log('Error combining prompt', combinedPrompt, prevMessage)
+        }
+
+        browser.runtime.sendMessage({type: 'query_embeddings', data: {modules: JSON.stringify(docs), prompt: combinedPrompt, provider: provider, seenKnowledge: seenKnowledge} })
         .then(response => {
         console.log('Route Document', response)
           if (response.knowledge) {
@@ -133,7 +140,7 @@ async function routeDocumentsEmbedding(modules: any, prompt: any, provider: stri
                 selectedScores[module] = response.scores[idx]
             })
            
-            resolve({knowledge: response.knowledge, modules: selectedModules, scores: selectedScores})
+            resolve({knowledge: response.knowledge, modules: selectedModules, scores: selectedScores, seenKnowledge: response.seenKnowledge})
           } else {
             resolve({})          
           }
@@ -149,7 +156,7 @@ async function routeDocumentsEmbedding(modules: any, prompt: any, provider: stri
    
 }
 
-async function routeDocumentsEmbeddingChunks(modules: any, prompt: any) {
+async function routeDocumentsEmbeddingChunks(modules: any, prompt: any, prevMessage: string, seenKnowledge: unknown) {
     const docs:any = {}
     const moduleNames:Array<string> = []
 
@@ -161,9 +168,15 @@ async function routeDocumentsEmbeddingChunks(modules: any, prompt: any) {
     let module;
 
     const promise = new Promise((resolve, reject) => {
-        browser.runtime.sendMessage({type: 'query_embeddings_chunks', data: {modules: JSON.stringify(docs), prompt: prompt} })
+        let combinedPrompt = prompt 
+        try {
+            combinedPrompt = prevMessage + ' ' + prompt
+        } catch {
+            console.log('Error combining prompt', combinedPrompt, prevMessage)
+        }
+        
+        browser.runtime.sendMessage({type: 'query_embeddings_chunks', data: {modules: JSON.stringify(docs), prompt: combinedPrompt, seenKnowledge: seenKnowledge} })
         .then(response => {
-          console.log('query_embeddings response', response)
           if (response.knowledge) {
               const selectedModules: any = {}
               const selectedScores: any = {}
@@ -172,13 +185,13 @@ async function routeDocumentsEmbeddingChunks(modules: any, prompt: any) {
                 selectedModules[module] = modules[module]
                 selectedScores[module] = response.scores[idx]
               })
-              resolve({knowledge: response.knowledge, modules: selectedModules, scores: selectedScores})
+              resolve({knowledge: response.knowledge, modules: selectedModules, scores: selectedScores, seenKnowledge: response.seenKnowledge})
           } else {
               resolve({})
           }
         })
         .catch(error => {
-            console.log(error)
+            console.error(error)
             resolve({})
         })
     })
@@ -199,5 +212,6 @@ export {
     routeDocumentsEmbedding,
     splitTextIntoChunks,
     routeDocumentsEmbeddingChunks,
-    getConversationId
+    getConversationId,
+    getByteSize
 }

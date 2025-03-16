@@ -17,8 +17,8 @@ const theme = createTheme({
         contrastText: '#fff', // Text color for primary
     },
     secondary: {
-        main: '#ADBBDA', // Secondary color
-        contrastText: '#fff', // Text color for secondary
+        main: '#fff', // Secondary color
+        contrastText: '#1e1e1e', // Text color for secondary
     },
     dark: {
         default: '#323639', 
@@ -33,6 +33,13 @@ const theme = createTheme({
         },
         },
     },
+    MuiToggleButton: {
+        styleOverrides: {
+            root: {
+                borderRadius: '24px', // Rounded corners
+            },
+        },
+    }
     },
 });
 

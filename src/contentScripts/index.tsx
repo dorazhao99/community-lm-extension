@@ -16,7 +16,9 @@ var prevURL:string = "";
 var url: string=""; 
 var activatedChips:Array<Object> = []
 var relevanceScores:Array<Object> = []
-var seenChips:Cache = {}
+var seenKnowledge:Cache = {}
+var prevMessage = ""
+var originalPrompt = ""
 
 // CSS for chip
 const RequestVariables = {
@@ -25,7 +27,7 @@ const RequestVariables = {
     \n We provide additional knowledge that might be helpful for answering the query.
     Let's think step by step. 
     1. Check whether the knowledge is relevant to the query. If the knowledge is relevant, incorporate it when answering.
-    2. If the knowledge is NOT relevant, disregard the knowledge, do NOT make reference to it, and answer the query. Ignore information that is irrelevant. Search the web if needed.\n
+    2. If the knowledge is NOT relevant, disregard the knowledge, do NOT make reference to it, and answer the query. Ignore information that is irrelevant. Do NOT search the web if you have sufficient knowledge.\n
     3. Check whether there are conflicts in the knowledge. Report conflicts in the output if they exist.
     \nKnowledge:<cllm>`,
   promptHeaderChunk: `
@@ -33,7 +35,7 @@ const RequestVariables = {
     \n We provide additional knowledge that might be helpful for answering the query. Ignore information that is irrelevant.
     Let's think step by step. 
     1. Check whether the knowledge is relevant to the query. If the knowledge is relevant, incorporate it when answering.
-    If the knowledge is NOT relevant, disregard the knowledge, do NOT make reference to it, and answer the query.\n
+    If the knowledge is NOT relevant, disregard the knowledge, do NOT make reference to it, and answer the query. Do NOT search the web if you have sufficient knowledge.\n
     2. Check whether there are conflicts in the knowledge. Report conflicts in the output if they exist.
     \nKnowledge:<cllm>`
 }
@@ -60,7 +62,7 @@ function createChips(modules:any, scores:any) {
     } catch {
       chipScore = 0.3
     }
-    activatedChips.push(modules[mod])
+    activatedChips.push({id: mod, ...modules[mod]})
     relevanceScores.push(chipScore)
   })
 }
@@ -68,9 +70,16 @@ function createChips(modules:any, scores:any) {
 window.addEventListener("change_prompt_chunk", function (evt) {
   browser.storage.local.get("knowledge").then((result) => {
     url = window.location.href
-    if (url !== prevURL || url.includes("chatgpt.com") || url.includes("claude.ai")) {
-      seenChips = {}
-      prevURL = url
+    console.log(url, prevURL)
+    if (url !== prevURL) {
+      const gptPattern = /^https:\/\/chatgpt\.com\/c\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+      const claudePattern = /^https:\/\/claude\.ai\/chat\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+      
+      // New chat window --> reset
+      if (gptPattern.test(prevURL) || claudePattern.test(prevURL)) {
+        seenKnowledge = {}
+        prevMessage = ''
+      }
     }
 
     if ("knowledge" in result) {
@@ -84,18 +93,17 @@ window.addEventListener("change_prompt_chunk", function (evt) {
     const options = JSON.parse(evt.detail.options)
     const newBody = JSON.parse(options.body)
     const origin = evt.detail.origin
-    console.log('New Body', newBody)
 
     const message = newBody.messages[0].content.parts
     const messageId = newBody.messages[0].id
     const conversationId = newBody?.parent_message_id
-    const originalPrompt = message[0]
+    originalPrompt = message[0]
 
-    routeDocumentsEmbeddingChunks(result["knowledge"], message)
+    routeDocumentsEmbeddingChunks(result["knowledge"], message, prevMessage, seenKnowledge)
     .then((response:any) => {
       const moduleNames = response.modules
-      console.log('Module Names', moduleNames)
       let newMessage = [...message]
+      prevMessage = newMessage.join(' ')
 
       if (moduleNames.length === 0) {
         activatedChips = []
@@ -105,6 +113,7 @@ window.addEventListener("change_prompt_chunk", function (evt) {
       let knowledge = '';
       if (response.knowledge) {
         knowledge = response.knowledge
+        seenKnowledge = response.seenKnowledge
         createChips(response.modules, response.scores)
       }
 
@@ -112,13 +121,12 @@ window.addEventListener("change_prompt_chunk", function (evt) {
       newMessage = [combinedKnowledge, ...message]
       newBody.messages[0].content.parts = newMessage
       newBody.customFetch = true
-      
 
       const modifiedOptions = {
           ...options,
           body: JSON.stringify(newBody),
       }
-      console.log('newbody in index', newBody)
+
       const event = new CustomEvent("send_prompt",
           {
               detail: {
@@ -143,7 +151,7 @@ window.addEventListener("change_prompt_chunk", function (evt) {
       })
     })
     .catch((error) => {
-      console.log(error)
+      console.error(error)
       newBody.messages[0].content.parts = [message.toString()]
       newBody.customFetch = true
       
@@ -170,12 +178,19 @@ window.addEventListener("change_prompt_chunk", function (evt) {
 
 window.addEventListener("change_prompt", function (evt) {
   browser.storage.local.get("knowledge").then((result) => {
-    console.log("Result", result)
     url = window.location.href
-    if (url !== prevURL || url.includes("chatgpt.com") || url.includes("claude.ai")) {
-      seenChips = {}
-      prevURL = url
+    if (url !== prevURL) {
+      const gptPattern = /^https:\/\/chatgpt\.com\/c\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+      const claudePattern = /^https:\/\/claude\.ai\/chat\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+
+      // New window --> reset seen knowledge and previous message
+      if (gptPattern.test(prevURL) || claudePattern.test(prevURL)) {
+        seenKnowledge = {}
+        prevMessage = ''
+      }
     }
+
+    prevURL = url
 
     if ("knowledge" in result) {
       browser.storage.sync.set({"modules": Object.keys(result["knowledge"])}).then(() => {
@@ -189,18 +204,19 @@ window.addEventListener("change_prompt", function (evt) {
     const options = JSON.parse(evt.detail.options)
     const newBody = JSON.parse(options.body)
     const origin = evt.detail.origin
-    console.log('New Body', newBody, window.location)
 
     const message = origin === 'openai' ? newBody.messages[0].content.parts : newBody.prompt
     const messageId = origin === 'openai' ? newBody.messages[0].id : newBody.parent_message_uuid
     const conversationId = origin === 'openai' ? newBody?.parent_message_id : getConversationId()
-    const originalPrompt = origin === 'openai' ? message[0] : message
+    originalPrompt = origin === 'openai' ? message[0] : message
 
-    routeDocumentsEmbedding(result["knowledge"], message, origin)
+    routeDocumentsEmbedding(result["knowledge"], message, prevMessage, origin, seenKnowledge)
     .then((response:any) => {
         let moduleNames = [];
         let scores = []; 
         let newMessage = origin === 'openai' ? [...message] : message
+        prevMessage = origin === 'openai' ? newMessage.join(' ') : newMessage
+        
         if (response.modules) {
           let knowledge = '';
           if (Object.keys(response.modules).length === 0) {
@@ -210,17 +226,15 @@ window.addEventListener("change_prompt", function (evt) {
           
           if (response.knowledge) {
             moduleNames = response.modules
-            console.log('Modules', moduleNames)
             knowledge = response.knowledge
             scores = response.scores
+            seenKnowledge = response.seenKnowledge
             createChips(response.modules, scores)
           } 
 
           const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
-          console.log('combined Knowledge', combinedKnowledge, message)
           if (origin === 'openai') {
             newMessage = [combinedKnowledge, ...message]
-            console.log('new message', newMessage)
             newBody.messages[0].content.parts = newMessage
             newBody.customFetch = true
           } else if (origin === 'claude') {
@@ -267,7 +281,8 @@ window.addEventListener("change_prompt", function (evt) {
     .catch((error) => {
       console.log(error)
       // Proceed as if no knowledge was added 
-      if (origin === 'openai') {
+      console.log('Origin', evt.detail.origin)
+      if (evt.detail.origin === 'openai') {
         newBody.messages[0].content.parts = [message.toString()]
         newBody.customFetch = true
       } else {
@@ -285,7 +300,8 @@ window.addEventListener("change_prompt", function (evt) {
                   modifiedOptions: JSON.stringify(modifiedOptions), 
                   originalPrompt: originalPrompt
               }
-          });
+          })
+      ;
 
       window.dispatchEvent(event);
       browser.runtime.sendMessage({
@@ -302,10 +318,10 @@ async function addSurvey() {
   const seenSurvey = localData.seenSurvey ? localData.seenSurvey : 0
   const syncData = await browser.storage.sync.get("uid")
   const uid = syncData?.uid 
-  if (currentDate >= showSurveyDate && seenSurvey <= 6 && uid) {
+  if (currentDate >= showSurveyDate && seenSurvey <= 5 && uid) {
       // add HTML for survey
       const box = document.createElement("div");
-      box.innerText = "Thank you for using Knoll! The Stanford HCI team is running an evaluation of your experience using the system through a short survey and optional interview. You will receive a $10 gift card for completing the survey.";
+      box.innerText = "Thank you for using Knoll! The Stanford HCI team is running an evaluation of your experience using the system through a <10 minute survey and optional interview. You will receive a $10 gift card for completing the survey.";
       box.style.position = "fixed";
       box.style.top = "10px";
       box.style.left = "50%";
@@ -325,9 +341,9 @@ async function addSurvey() {
       box.style.gap = "10px";
   
       let button = document.createElement("a");
-      button.href = `${constants.URL}/survey/${uid}`
+      button.href = `${constants.URL}/survey-signup/${uid}`
       button.className = "button";
-      button.textContent = "Survey Link";
+      button.textContent = "Sign Up";
       button.target = "_blank";
       button.style.backgroundColor = "#7091E6";
       button.style.padding = "0.5rem 1rem";
@@ -352,7 +368,6 @@ async function addSurvey() {
       closeButton.onclick = () => {
           box.remove();
       };
-      console.log(box)
       box.appendChild(closeButton);
       document.body.appendChild(box);
       browser.storage.local.set({"seenSurvey": seenSurvey + 1})
@@ -362,17 +377,43 @@ async function addSurvey() {
 function injectChips(element:any) {
   let labelsWrapper = document.createElement("div");
   labelsWrapper.classList.add("module-container");
-  console.log('Relevance', relevanceScores)
+
   activatedChips.forEach((chip, idx) => {
-    const name = chip.name ? chip.name: "Unnamed Module"
-    let chipElement = document.createElement("a");
-    chipElement.href = chip.link ? chip.link : "";
-    chipElement.className = "chip";
-    chipElement.classList.add("value-chip");
-    chipElement.textContent = name;     // TO-DO Query Store for the modules mapping to message
-    chipElement.target = "_blank";
-    chipElement.style.backgroundColor = `rgba(112, 145, 230, ${relevanceScores[idx]})`; 
-    labelsWrapper.appendChild(chipElement); 
+      const name = chip.name ? chip.name: "Unnamed Module"
+      let chipWrapper = document.createElement("div")
+      let chipElement = document.createElement("a");
+      chipElement.href = chip.link ? chip.link : "";
+      chipElement.classList.add("value-chip");
+      chipElement.textContent = name;     // TO-DO Query Store for the modules mapping to message
+      chipElement.target = "_blank";
+      chipWrapper.appendChild(chipElement)
+  
+      if (chip.id !== 'personal') {
+        const closeButton = document.createElement("button");
+        closeButton.innerText = "✖";
+        closeButton.style.color = "white";
+        closeButton.style.border = "none";
+        closeButton.style.padding = "0 8px";
+        closeButton.style.cursor = "pointer";
+        closeButton.style.fontSize = "8px";
+        closeButton.style.borderRadius = "50%";
+        closeButton.onclick = () => {
+          console.log('Removed chip', chip)
+          browser.runtime.sendMessage({
+            type: "remove_chip",
+            data: {module: chip, score: relevanceScores[idx], message: originalPrompt}
+          })
+          .then(response => {
+            if (response.success) {
+              chipWrapper.remove();
+            }
+          })
+        };
+        chipWrapper.appendChild(closeButton);
+      }
+      chipWrapper.className = "chip";
+      chipWrapper.style.backgroundColor = `rgba(112, 145, 230, ${relevanceScores[idx]})`; 
+      labelsWrapper.appendChild(chipWrapper); 
   })
 
   const style = document.createElement("style");
@@ -421,8 +462,6 @@ function observeMessages() {
                 const namedValue = attributes.getNamedItem("data-message-author-role");
                 if (namedValue) {
                   if (namedValue.value === "assistant") {
-                    // addedChip = true
-                    console.log('Chip 1', node)
                     injectChips(node)
                   }
                 }
@@ -444,14 +483,39 @@ function observeMessages() {
 
       activatedChips.forEach((chip, idx) => {
         const name = chip.name ? chip.name: "Unnamed Module"
+        let chipWrapper = document.createElement("div")
         let chipElement = document.createElement("a");
         chipElement.href = chip.link ? chip.link : "";
-        chipElement.className = "chip";
         chipElement.classList.add("value-chip");
         chipElement.textContent = name;     // TO-DO Query Store for the modules mapping to message
         chipElement.target = "_blank";
-        chipElement.style.backgroundColor = `rgba(112, 145, 230, ${relevanceScores[idx]})`; 
-        labelsWrapper.appendChild(chipElement); 
+        chipWrapper.appendChild(chipElement)
+    
+        if (chip.id !== 'personal') {
+          const closeButton = document.createElement("button");
+          closeButton.innerText = "✖";
+          closeButton.style.color = "white";
+          closeButton.style.border = "none";
+          closeButton.style.padding = "0 8px";
+          closeButton.style.cursor = "pointer";
+          closeButton.style.fontSize = "8px";
+          closeButton.style.borderRadius = "50%";
+          closeButton.onclick = () => {
+            browser.runtime.sendMessage({
+              type: "remove_chip",
+              data: {module: chip, score: relevanceScores[idx], message: originalPrompt}
+            })
+            .then(response => {
+              if (response.success) {
+                chipWrapper.remove();
+              }
+            })
+          };
+          chipWrapper.appendChild(closeButton);
+        }
+        chipWrapper.className = "chip";
+        chipWrapper.style.backgroundColor = `rgba(112, 145, 230, ${relevanceScores[idx]})`; 
+        labelsWrapper.appendChild(chipWrapper); 
       })
 
       const style = document.createElement("style");

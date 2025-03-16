@@ -8,7 +8,7 @@ export const getTermFrequency = (term: string, corpus: string) => {
     try {
         return ((corpus || "").match(new RegExp(term, "g")) || []).length;
     } catch(error) {
-        console.log(error, term, corpus)
+        console.error(error)
         return 0;
     }
 };

@@ -8,7 +8,6 @@ import Alert from '@mui/material/Alert';
 import SearchIcon from '@mui/icons-material/Search';
 import { AddModule } from './AddModule';
 import browser from "webextension-polyfill";
-import userServices from '~/services/userServices';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 
@@ -24,6 +23,12 @@ export function Selector(props) {
     const [showAlert, setAlert] = useState(false)
     const [isSuccess, setSuccess] = useState(false)
 
+    const explorePage = () => {
+        browser.runtime.sendMessage({
+            type: "explore",
+        })
+    }
+
     const handleClick = () => {
         window.open('https://knollapp.com/create', '_blank');
     };
@@ -36,7 +41,6 @@ export function Selector(props) {
         let updatedChecked = {...checked} 
         updatedChecked[event.target.id.toString()] = event.target.checked 
         setChecked(updatedChecked)
-        console.log('checked', checked)
     }
 
     const sendMessage = () => {
@@ -46,102 +50,97 @@ export function Selector(props) {
             data: {checked: checked, modules: props.modules}
         })
         .then(() => {
-            browser.storage.sync.set({checkedModules: checked})
-            console.log("Modules saved")
+            browser.storage.session.set({"checked": checked})
             setAlert(true)
             setSuccess(true)
         })
         .catch((error) => {
-            console.log('Error saving module', error)
+            console.error(error)
             setAlert(true)
             setSuccess(false)
         });
     }
 
-    const checkAll = (event, modules) => {
-        let updateChecked = {...checked}
-        console.log('comm checkked', updateChecked, modules)
-        modules.forEach((module, _) => {
-            updateChecked[module] = event.target.checked
-        })
-        setChecked(updateChecked)
-      }
+    // const checkAll = (event, modules) => {
+    //     let updateChecked = {...checked}
+    //     console.log('comm checkked', updateChecked, modules)
+    //     modules.forEach((module, _) => {
+    //         updateChecked[module] = event.target.checked
+    //     })
+    //     setChecked(updateChecked)
+    //   }
+
+    useEffect(() => {
+        setChecked(props.checked)
+    }, [props.checked])
 
     return (
         <Box sx={{ typography: 'body1'}}>
-            <AddModule 
+            {/* <AddModule 
                 user={props.user}
                 open={open}
                 handleClose={() => setOpen(false)}
                 reloadModules={props.reloadModules}
-            />
-            <AppBar sx={{backgroundColor: 'inherit', padding: '4px 0'}} position="static" elevation={1}>
-                <Toolbar variant="dense">
-                    <Grid container sx={{justifyContent: "space-between", alignItems: "center", width: '100%'}}>
-                        <Grid size={1}>
-                            <Button 
-                                variant="contained"
-                                size="small" 
-                                startIcon={<LibraryBooksIcon/>}
-                                color="success" 
-                                onClick={() => handleClick()}
-                            >
-                                New
-                            </Button>
-                        </Grid>
-                        <Grid size={8}>
-                            <Box>
-                                <Grid container 
-                                    sx={{
-                                        justifyContent: "flex-start",
-                                        alignItems: "center",
-                                        border: 'solid 1px #e2e2e2',
-                                        borderRadius: '16px',
-                                        padding: '4px'
-                                    }}>
-                                    <SearchIcon sx={{color:"#323639"}}/>
-                                    <InputBase
-                                        placeholder="Search..."
-                                        inputProps={{ 'aria-label': 'Search...' }}
-                                        onChange = {props.filterItems}
-                                    />
-                                </Grid> 
-                            </Box>
-                        </Grid>
-                    </Grid>
-                </Toolbar>
-            </AppBar>
+            /> */}
             <Box sx={{height: '65vh', margin: '1em 1em 0 1em'}}>
+                 <Typography variant="body1">
+                    <strong>
+                        Imported Knowledge Modules
+                    </strong>
+                </Typography>
                 <Grid container sx={{ maxHeight: '60vh', overflowY: 'auto'}} justifyContent="center">
                     {
                         props.modules.map((module, idx) => {
-                        return(
-                            <Module 
-                                checked={checked[module.id] ? checked[module.id] : false}
-                                onChange={handleChecked}
-                                id={module.id}
-                                title={module.name}
-                                description={module.description}
-                                link={module.gh_page}
-                                access={module.access}
-                            />
-                        )
+                            const link = module?.source === 'google' ? module.doc_page : module.gh_page
+                            return(
+                                <Module 
+                                    checked={checked[module.id] ? checked[module.id] : false}
+                                    onChange={handleChecked}
+                                    id={module.id}
+                                    title={module.name}
+                                    description={module.description}
+                                    link={link}
+                                    access={module.access}
+                                />
+                            )
                         })
                     }
+                    {
+                        Object.keys(props.modules).length < 2 ? (
+                            <Grid sx={{mt: 3}} align="center">
+                                <Typography>
+                                    <strong>
+                                        Explore what other types of knowledge you can add.
+                                    </strong>
+                                </Typography>
+                                <Button variant="outlined" onClick={explorePage}>
+                                    Browse Modules
+                                </Button>
+                            </Grid>
+                        ) : null
+                    }
                 </Grid>
-                
             </Box>
-            <Grid sx={{padding: '12px 0'}} container justifyContent="center">
-                <Button 
-                    sx={{width: '85%'}} 
-                    onClick={sendMessage} 
-                    variant="contained"
-                > 
-                    Save
-                </Button>
-            </Grid>
-            <Grid container justifyContent="center">
-                <Box sx={{width: '85%'}}>
+            <Box>
+            </Box>
+            <Grid container
+                direction="column"
+                alignItems="center"
+                justifyContent="center"
+                spacing={1}
+                sx={{p: 1}}
+            >
+                <Grid size={10}>
+                    <Button 
+                        fullWidth
+                        size="small"
+                        onClick={sendMessage} 
+                        variant="contained"
+                    > 
+                        Update
+                    </Button>
+                </Grid>
+                <Grid>
                     {
                         showAlert ? (
                             isSuccess ? (
@@ -161,7 +160,12 @@ export function Selector(props) {
                             )
                         ) : null
                     }
-                </Box>
+                </Grid>
+                {/* <Grid size={10} textAlign="center">
+                    <Typography variant="body2">
+                        Last updated at DATE
+                    </Typography>
+                </Grid> */}
             </Grid>
         </Box>
     );

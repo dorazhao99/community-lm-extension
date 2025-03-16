@@ -1,43 +1,10 @@
 import axios from 'axios';
 import constants from './constants'; 
 
-// // poll for responses from worker
-// function checkTaskStatus(taskId, taskType) {
-//     const statusUrl = `${constants.EMBEDDING_URL}/task_status/${taskId}/${taskType}`;
-    
-//     // Set up polling interval
-//     const pollInterval = setInterval(() => {
-//       axios.get(statusUrl)
-//         .then(statusData => {
-//           if (statusData.status === 'SUCCESS') {
-//             // Task completed successfully
-//             clearInterval(pollInterval);
-            
-//             // Process the results
-//             const results = statusData.result;
-//             // Do something with the relevant_modules and relevant_knowledge
-//             processResults(results);
-//           } 
-//           else if (statusData.status === 'FAILURE') {
-//             // Task failed
-//             clearInterval(pollInterval);
-//             console.error('Task failed:', statusData.message);
-//             // Handle the error in your UI
-//           }
-//           // Otherwise, it's still pending or in progress, continue polling
-//         })
-//         .catch(error => {
-//           clearInterval(pollInterval);
-//           console.error('Error checking task status:', error);
-//         });
-//     }, 500); // Check every second
-// }
-
 // eslint-disable-next-line import/no-anonymous-default-export
 export default {
     async queryGPT(data:any) {
         const response = await axios.post(`${constants.SERVER_API}/queryGPT`, data)
-        console.log('GPT Response', response)
         if (response.data) {
             return {modules: response.data}
         } else {
@@ -66,7 +33,8 @@ export default {
                                 resolve({
                                     modules: results.relevant_modules,
                                     knowledge: results.relevant_knowledge,
-                                    scores: results.scores
+                                    scores: results.scores,
+                                    seenKnowledge: results.seen_knowledge
                                 });
                             } else if (statusData.data.status === 'FAILURE') {
                                 // Task failed
@@ -75,7 +43,8 @@ export default {
                                 resolve({
                                     modules: [],
                                     knowledge: [],
-                                    scores: []
+                                    scores: [],
+                                    seenKnowledge: data.seenKnowledge
                                 })
                             }
                         } catch (error) {
@@ -84,17 +53,18 @@ export default {
                             resolve({
                                 modules: [],
                                 knowledge: [],
-                                scores: []
+                                scores: [],
+                                seenKnowledge: data.seenKnowledge
                             })
                         }
                     }, 500);
                 });
             } else {
-                return { modules: [], knowledge: '' };
+                return { modules: [], knowledge: '', seenKnowledge: data.seenKnowledge };
             }
         } catch (error) {
             console.error('Error querying embeddings:', error);
-            return { modules: [], knowledge: '' };
+            return { modules: [], knowledge: '', seenKnowledge: data.seenKnowledge };
         }
 
     },
@@ -119,7 +89,8 @@ export default {
                                 resolve({
                                     modules: results.relevant_modules,
                                     knowledge: results.relevant_knowledge,
-                                    scores: results.scores
+                                    scores: results.scores,
+                                    seenKnowledge: results.seen_knowledge
                                 });
                             } else if (statusData.data.status === 'FAILURE') {
                                 // Task failed
@@ -128,7 +99,8 @@ export default {
                                 resolve({
                                     modules: [],
                                     knowledge: [],
-                                    scores: []
+                                    scores: [],
+                                    seenKnowledge: data.seenKnowledge
                                 })
                             }
                         } catch (error) {
@@ -137,17 +109,18 @@ export default {
                             resolve({
                                 modules: [],
                                 knowledge: [],
-                                scores: []
+                                scores: [],
+                                seenKnowledge: data.seenKnowledge
                             })
                         }
                     }, 500);
                 });
             } else {
-                return { modules: [], knowledge: '' };
+                return { modules: [], knowledge: '', seenKnowledge: data.seenKnowledge };
             }
         } catch (error) {
             console.error('Error querying embeddings:', error);
-            return { modules: [], knowledge: '' };
+            return { modules: [], knowledge: '', seenKnowledge: data.seenKnowledge };
         }
     }
 }

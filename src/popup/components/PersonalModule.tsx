@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Box from "@mui/material/Box";
-import { Button, Divider, Alert, CircularProgress, Paper, IconButton, TextField } from "@mui/material";
+import { Button, Divider, Alert, CircularProgress, Paper, IconButton, TextField, Link } from "@mui/material";
 import { ShareClipping } from "./Share";
 import Typography from "@mui/material/Typography";
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -45,6 +45,9 @@ export const PersonalModule = (props:any) => {
     setManual(evt.target.value)
   }
 
+  const showVideo = () => {
+    window.open('https://youtu.be/5E3BBMtEdKU', '_blank');
+  }
   const manualSave = () => {
     if (manual.length > 0) {
         const numBytes = getByteSize(manual) 
@@ -175,7 +178,7 @@ export const PersonalModule = (props:any) => {
                         <Box>
                             <Typography variant="body1">
                                 No knowledge added yet. <br/>
-                                Learn how to add knowledge to your module here.
+                                Learn how to add knowledge to your module <Link underline="always" href="https://youtu.be/5E3BBMtEdKU">here</Link>.
                             </Typography>
                         </Box>
                     )

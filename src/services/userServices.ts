@@ -34,14 +34,13 @@ export default {
                 return {success: false}
             }
         } else {
-            console.log('No user')
+            console.error('No user')
             return {success: false}
         }
     },
     async saveUserModules(knowledge) {
         const syncData = await browser.storage.sync.get("uid")
         const uid = syncData?.uid
-        console.log('UID', uid)
         if (uid) {
             const body = {
                 uid: uid, 
@@ -54,7 +53,7 @@ export default {
                 return {success: false}
             }
         } else {
-            console.log('No user')
+            console.error('No user')
             return {success: false}
         }
     },
@@ -69,10 +68,67 @@ export default {
                 return {success: false}
             }
         } else {
-            console.log('No user')
+            console.error('No user')
             return {success: false}
         }
     },
+    async createGist(data: Object) {
+        const syncData = await browser.storage.sync.get("uid")
+        const uid = syncData?.uid
+        if (uid) {
+            const postData = {...data, uid: uid}
+            const response = await axios.post(`${constants.SERVER_API}/createGist`, postData)
+            if (response.data) {
+                return {success: true, data: response.data}
+            } else {
+                console.log(response)
+                return {success: false, data: response}
+            }
+        } else {
+            console.error('Could not make gist')
+            return {success: false}
+        }
+    }, 
+    async logAction(data: any) {
+        const syncData = await browser.storage.sync.get("uid")
+        const uid = syncData?.uid
+        if (uid) {
+            const actionData = {
+                ...data,
+                uid: uid
+            }
+            axios.post(`${constants.SERVER_API}/logAction`, actionData)
+            .then(response => {
+                return {success: true, data: response.data}
+            })
+            .catch(error => {
+                console.error(error)
+                return {success: false}
+            })
+        } else {
+            console.error('No user')
+            return {success: false}
+        }
+    }, 
+    async deleteChip(data: any) {
+        const syncData = await browser.storage.sync.get("uid")
+        const uid = syncData?.uid
+        if (uid) {
+            const chipData = {
+                ...data,
+                uid: uid
+            }
+            const response = await axios.post(`${constants.SERVER_API}/deleteChip`, chipData)
+            if (response.data) {
+                return {success: true, data: response.data}
+            } else {
+                return {success: false}
+            }
+        } else {
+            console.error('No user')
+            return {success: false}
+        }
+    }, 
     async updateLogs(data: any) {
         const syncData = await browser.storage.sync.get("uid")
         const uid = syncData?.uid
@@ -98,7 +154,7 @@ export default {
                 return {success: false}
             }
         } else {
-            console.log('No user')
+            console.error('No user')
             return {success: false}
         }
     }
