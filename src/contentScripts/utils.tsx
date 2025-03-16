@@ -128,7 +128,8 @@ async function routeDocumentsEmbedding(modules: any, prompt: unknown, prevMessag
             console.log('Error combining prompt', combinedPrompt, prevMessage)
         }
 
-        browser.runtime.sendMessage({type: 'query_embeddings', data: {modules: JSON.stringify(docs), prompt: combinedPrompt, provider: provider, seenKnowledge: seenKnowledge} })
+        // browser.runtime.sendMessage({type: 'query_embeddings', data: {modules: JSON.stringify(docs), prompt: combinedPrompt, provider: provider, seenKnowledge: seenKnowledge} })
+        browser.runtime.sendMessage({type: 'query_embeddings', data: {modules: JSON.stringify(docs), prompt: combinedPrompt, provider: provider} })
         .then(response => {
         console.log('Route Document', response)
           if (response.knowledge) {
@@ -175,7 +176,8 @@ async function routeDocumentsEmbeddingChunks(modules: any, prompt: any, prevMess
             console.log('Error combining prompt', combinedPrompt, prevMessage)
         }
         
-        browser.runtime.sendMessage({type: 'query_embeddings_chunks', data: {modules: JSON.stringify(docs), prompt: prompt, seenKnowledge: seenKnowledge} })
+        // browser.runtime.sendMessage({type: 'query_embeddings_chunks', data: {modules: JSON.stringify(docs), prompt: prompt, seenKnowledge: seenKnowledge} })
+        browser.runtime.sendMessage({type: 'query_embeddings_chunks', data: {modules: JSON.stringify(docs), prompt: prompt} })
         .then(response => {
           if (response.knowledge) {
               const selectedModules: any = {}

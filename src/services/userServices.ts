@@ -110,6 +110,25 @@ export default {
             return {success: false}
         }
     }, 
+    async deleteChip(data: any) {
+        const syncData = await browser.storage.sync.get("uid")
+        const uid = syncData?.uid
+        if (uid) {
+            const chipData = {
+                ...data,
+                uid: uid
+            }
+            const response = await axios.post(`${constants.SERVER_API}/deleteChip`, chipData)
+            if (response.data) {
+                return {success: true, data: response.data}
+            } else {
+                return {success: false}
+            }
+        } else {
+            console.error('No user')
+            return {success: false}
+        }
+    }, 
     async updateLogs(data: any) {
         const syncData = await browser.storage.sync.get("uid")
         const uid = syncData?.uid

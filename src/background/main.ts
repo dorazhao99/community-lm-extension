@@ -11,9 +11,24 @@ interface Cache {
   [key: any]: any;
 }
 
+const removeChecked = async(request:any) => {
+  console.log('save', request)
+  let currentKnowledge = await browser.storage.local.get("knowledge")
+  await browser.storage.session.set({"checked": request.data.checked})
+  delete currentKnowledge[request.data.moduleId]
+  console.log(updatedKnowledge)
+  browser.storage.local.set({"knowledge": currentKnowledge}).then(() => {
+    return new Promise((resolve, reject) => {
+      resolve(null)
+    })
+  });
+}
+
 const saveModules = async(request:any) => {
+  console.log('save', request)
   let currentKnowledge = await browser.storage.local.get("knowledge")
   const knowledge = await moduleServices.updateKnowledge(request.data.checked, request.data.modules)
+  console.log('Knowledge', knowledge)
   if (knowledge && knowledge["response"]) {
     await browser.storage.session.set({"checked": request.data.checked, "modules": request.data.modules})
     const response = JSON.parse(knowledge["response"]) // parse the stringified response
@@ -186,7 +201,6 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     })
   }
   else if (request.type === 'sent_message') {
-    return new Promise((resolve, reject) => {
       // Update number of messages sent (currently 1 one at time).
       // TODO: Batch updates after every X amount of time
       return new Promise((resolve, reject) => {
@@ -199,8 +213,7 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
             console.error(error)
             resolve({});
           });
-      })
-    });
+      });
   }
   else if (request.type === 'create_gist') {
     return new Promise((resolve, reject) => {
@@ -228,6 +241,18 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         });
     })
   }
+  else if (request.type === 'remove_chip') {
+    return new Promise(async(resolve, reject) => {
+      let response:unknown = await userServices.deleteChip(request.data)
+      console.log('Remove', response)
+      if (response.success) {
+        removeChecked(response)
+        resolve(response)
+      } else {
+        resolve({})
+      }
+    }) 
+  } 
   else if (request.type === 'query_gpt') {
     return new Promise((resolve, reject) => {
       gptServices
@@ -267,6 +292,7 @@ browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         })
     })
   } 
+  
 });
 
 // handle browser menu clicks
