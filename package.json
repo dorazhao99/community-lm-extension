@@ -1,7 +1,7 @@
 {
   "name": "Knoll",
   "displayName": "Knoll",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Build and create custom knowledge repositories that you can easily incorporate into LLMs.",
   "private": true,
   "scripts": {

@@ -15,9 +15,9 @@ const removeChecked = async(request:any) => {
   console.log('save', request)
   let currentKnowledge = await browser.storage.local.get("knowledge")
   await browser.storage.session.set({"checked": request.data.checked})
-  delete currentKnowledge[request.data.moduleId]
-  console.log(updatedKnowledge)
-  browser.storage.local.set({"knowledge": currentKnowledge}).then(() => {
+  delete currentKnowledge.knowledge[request.data.moduleId]
+  console.log(currentKnowledge)
+  browser.storage.local.set({"knowledge": currentKnowledge.knowledge}).then(() => {
     return new Promise((resolve, reject) => {
       resolve(null)
     })
