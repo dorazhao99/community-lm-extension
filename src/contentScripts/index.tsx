@@ -18,6 +18,7 @@ var activatedChips:Array<Object> = []
 var relevanceScores:Array<Object> = []
 var seenKnowledge:Cache = {}
 var prevMessage = ""
+var originalPrompt = ""
 
 // CSS for chip
 const RequestVariables = {
@@ -96,7 +97,7 @@ window.addEventListener("change_prompt_chunk", function (evt) {
     const message = newBody.messages[0].content.parts
     const messageId = newBody.messages[0].id
     const conversationId = newBody?.parent_message_id
-    const originalPrompt = message[0]
+    originalPrompt = message[0]
 
     routeDocumentsEmbeddingChunks(result["knowledge"], message, prevMessage, seenKnowledge)
     .then((response:any) => {
@@ -113,7 +114,6 @@ window.addEventListener("change_prompt_chunk", function (evt) {
       if (response.knowledge) {
         knowledge = response.knowledge
         seenKnowledge = response.seenKnowledge
-        console.log('seenKnowledge chunk', seenKnowledge)
         createChips(response.modules, response.scores)
       }
 
@@ -208,17 +208,14 @@ window.addEventListener("change_prompt", function (evt) {
     const message = origin === 'openai' ? newBody.messages[0].content.parts : newBody.prompt
     const messageId = origin === 'openai' ? newBody.messages[0].id : newBody.parent_message_uuid
     const conversationId = origin === 'openai' ? newBody?.parent_message_id : getConversationId()
-    const originalPrompt = origin === 'openai' ? message[0] : message
+    originalPrompt = origin === 'openai' ? message[0] : message
 
-    console.log('seenKnowledge', seenKnowledge)
     routeDocumentsEmbedding(result["knowledge"], message, prevMessage, origin, seenKnowledge)
     .then((response:any) => {
-        console.log('route', response)
         let moduleNames = [];
         let scores = []; 
         let newMessage = origin === 'openai' ? [...message] : message
         prevMessage = origin === 'openai' ? newMessage.join(' ') : newMessage
-        console.log('Previous Message', prevMessage)
         
         if (response.modules) {
           let knowledge = '';
@@ -232,7 +229,6 @@ window.addEventListener("change_prompt", function (evt) {
             knowledge = response.knowledge
             scores = response.scores
             seenKnowledge = response.seenKnowledge
-            console.log('seenKnowledge 2', seenKnowledge)
             createChips(response.modules, scores)
           } 
 
@@ -381,7 +377,7 @@ async function addSurvey() {
 function injectChips(element:any) {
   let labelsWrapper = document.createElement("div");
   labelsWrapper.classList.add("module-container");
-  console.log('Relevance', relevanceScores)
+
   activatedChips.forEach((chip, idx) => {
       const name = chip.name ? chip.name: "Unnamed Module"
       let chipWrapper = document.createElement("div")
@@ -405,7 +401,7 @@ function injectChips(element:any) {
           console.log('Removed chip', chip)
           browser.runtime.sendMessage({
             type: "remove_chip",
-            data: {module: chip, score: relevanceScores[idx]}
+            data: {module: chip, score: relevanceScores[idx], message: originalPrompt}
           })
           .then(response => {
             if (response.success) {
@@ -505,10 +501,9 @@ function observeMessages() {
           closeButton.style.fontSize = "8px";
           closeButton.style.borderRadius = "50%";
           closeButton.onclick = () => {
-            console.log('Removed chip', chip)
             browser.runtime.sendMessage({
               type: "remove_chip",
-              data: {module: chip, score: relevanceScores[idx]}
+              data: {module: chip, score: relevanceScores[idx], message: originalPrompt}
             })
             .then(response => {
               if (response.success) {

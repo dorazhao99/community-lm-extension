@@ -38,8 +38,8 @@ export async function getManifest() {
     permissions: ['storage', 'contextMenus'],
     // host_permissions: ['*://chatgpt.com/*'],
     externally_connectable: {
-      matches: ["*://localhost/*"],
-      // matches: ["*://*.knollapp.com/*"],
+      // matches: ["*://localhost/*"],
+      matches: ["*://*.knollapp.com/*", "*://localhost/*"],
     }, 
     content_scripts: [
       {

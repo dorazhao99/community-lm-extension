@@ -12,7 +12,6 @@ interface Cache {
 }
 
 const removeChecked = async(request:any) => {
-  console.log('save', request)
   let currentKnowledge = await browser.storage.local.get("knowledge")
   await browser.storage.session.set({"checked": request.data.checked})
   if (currentKnowledge.knowledge) {
@@ -29,10 +28,9 @@ const removeChecked = async(request:any) => {
 }
 
 const saveModules = async(request:any) => {
-  console.log('save', request)
   let currentKnowledge = await browser.storage.local.get("knowledge")
   const knowledge = await moduleServices.updateKnowledge(request.data.checked, request.data.modules)
-  console.log('Knowledge', knowledge)
+
   if (knowledge && knowledge["response"]) {
     await browser.storage.session.set({"checked": request.data.checked, "modules": request.data.modules})
     const response = JSON.parse(knowledge["response"]) // parse the stringified response
@@ -94,7 +92,6 @@ browser.runtime.onInstalled.addListener(({ reason }): void => {
 
 
 browser.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
-  console.log("Message", message)
   if (message.type === 'sign_in') {
     browser.storage.sync.set({"uid": message.user, "isAnon": message.isAnon})
     sendResponse(null)
