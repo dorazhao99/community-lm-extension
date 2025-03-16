@@ -322,7 +322,7 @@ async function addSurvey() {
   const seenSurvey = localData.seenSurvey ? localData.seenSurvey : 0
   const syncData = await browser.storage.sync.get("uid")
   const uid = syncData?.uid 
-  if (true) {
+  if (currentDate >= showSurveyDate && seenSurvey <= 5 && uid) {
       // add HTML for survey
       const box = document.createElement("div");
       box.innerText = "Thank you for using Knoll! The Stanford HCI team is running an evaluation of your experience using the system through a <10 minute survey and optional interview. You will receive a $10 gift card for completing the survey.";
