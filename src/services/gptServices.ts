@@ -28,6 +28,7 @@ export default {
                             if (statusData.data.status === 'SUCCESS') {
                                 // Task completed successfully
                                 clearInterval(pollInterval);
+                                clearTimeout(timeout); 
                                 const results = statusData.data.result;
                                 console.log('Results', results);
                                 resolve({
@@ -39,6 +40,7 @@ export default {
                             } else if (statusData.data.status === 'FAILURE') {
                                 // Task failed
                                 clearInterval(pollInterval);
+                                clearTimeout(timeout); 
                                 console.error('Task failed:', statusData.data.message);
                                 resolve({
                                     modules: [],
@@ -49,6 +51,7 @@ export default {
                             }
                         } catch (error) {
                             clearInterval(pollInterval);
+                            clearTimeout(timeout); 
                             console.error('Error checking task status:', error);
                             resolve({
                                 modules: [],
@@ -58,6 +61,17 @@ export default {
                             })
                         }
                     }, 500);
+
+                    const timeout = setTimeout(() => {
+                        clearInterval(pollInterval); // Stop the polling
+                        console.log('Polling stopped after 30 seconds.');
+                        resolve({
+                            modules: [],
+                            knowledge: [],
+                            scores: [],
+                            seenKnowledge: data.seenKnowledge
+                        });
+                    }, 30000);
                 });
             } else {
                 return { modules: [], knowledge: '', seenKnowledge: data.seenKnowledge };
