@@ -22,6 +22,21 @@ export function Selector(props) {
     const [checked, setChecked] = useState(props.checked)
     const [showAlert, setAlert] = useState(false)
     const [isSuccess, setSuccess] = useState(false)
+    const [changeChecked, setChange] = useState(false)
+    const [canRefresh, setRefresh] = useState(false)
+    const [message, setMessage] = useState('')
+
+    const checkRefresh = (checked) => {
+        let isRefresh = false
+        props.modules.forEach((m, idx) => {
+            if (m.id in checked) {
+                if (checked[m.id] === true) {
+                    isRefresh = true
+                }
+            }
+        })
+        return isRefresh
+    }
 
     const explorePage = () => {
         browser.runtime.sendMessage({
@@ -41,6 +56,7 @@ export function Selector(props) {
         let updatedChecked = {...checked} 
         updatedChecked[event.target.id.toString()] = event.target.checked 
         setChecked(updatedChecked)
+        setChange(true)
     }
 
     const sendMessage = () => {
@@ -53,13 +69,44 @@ export function Selector(props) {
             browser.storage.session.set({"checked": checked})
             setAlert(true)
             setSuccess(true)
+            setChange(false)
+            setMessage('Saved changes')
+            setRefresh(checkRefresh(checked))
         })
         .catch((error) => {
             console.error(error)
             setAlert(true)
             setSuccess(false)
+            setMessage('Error saving modules')
         });
     }
+
+    const refreshKnowledge = () => {
+        console.log('send messsage', checked, props.modules)
+        browser.runtime.sendMessage({
+            type: "save_module",
+            data: {checked: checked, modules: props.modules}
+        })
+        .then(() => {
+            browser.storage.session.set({"checked": checked})
+            setAlert(true)
+            setSuccess(true)
+            setChange(false)
+            setMessage('Successfully refreshed')
+            if (Object.values(checked).includes(true)) {
+                setRefresh(true)
+            } else {
+                setRefresh(false)
+            }
+        })
+        .catch((error) => {
+            console.error(error)
+            setAlert(true)
+            setSuccess(false)
+            setMessage('Unable to refresh knowledge')
+        });
+    }
+
 
     // const checkAll = (event, modules) => {
     //     let updateChecked = {...checked}
@@ -72,6 +119,12 @@ export function Selector(props) {
 
     useEffect(() => {
         setChecked(props.checked)
+        console.log(props.checked)
+        try {
+            setRefresh(checkRefresh(props.checked))
+        } catch {
+            setRefresh(false)
+        }
     }, [props.checked])
 
     return (
@@ -88,7 +141,7 @@ export function Selector(props) {
                         Imported Knowledge Modules
                     </strong>
                 </Typography>
-                <Grid container sx={{ maxHeight: '60vh', overflowY: 'auto'}} justifyContent="center">
+                <Grid container sx={{ maxHeight: '58vh', overflowY: 'auto'}} justifyContent="center">
                     {
                         props.modules.map((module, idx) => {
                             const link = module?.source === 'google' ? module.doc_page : module.gh_page
@@ -135,9 +188,21 @@ export function Selector(props) {
                         fullWidth
                         size="small"
                         onClick={sendMessage} 
-                        variant="contained"
+                        variant="outlined"
+                        disabled={!changeChecked}
                     > 
-                        Update
+                        Save Changes
+                    </Button>
+                </Grid>
+                <Grid size={10}>
+                    <Button 
+                        fullWidth
+                        size="small"
+                        onClick={refreshKnowledge} 
+                        variant="contained"
+                        disabled={!canRefresh}
+                    > 
+                        Refresh Knowledge
                     </Button>
                 </Grid>
                 <Grid>
@@ -145,17 +210,19 @@ export function Selector(props) {
                         showAlert ? (
                             isSuccess ? (
                                 <Alert 
+                                sx={{padding: "4px", fontSize: "0.75rem"}}
                                 severity="success"
                                 onClose={() => setAlert(false)}
                             >
-                                Modules saved.
+                                {message}
                             </Alert>
                             ) : (
                                 <Alert 
+                                sx={{padding: "4px", fontSize: "0.75rem"}}
                                 severity="error"
                                 onClose={() => setAlert(false)}
                             >
-                                Error saving modules.
+                                {message}
                             </Alert>
                             )
                         ) : null

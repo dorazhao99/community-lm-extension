@@ -39,7 +39,7 @@ const theme = createTheme({
                 borderRadius: '24px', // Rounded corners
             },
         },
-    }
+    }, 
     },
 });
 

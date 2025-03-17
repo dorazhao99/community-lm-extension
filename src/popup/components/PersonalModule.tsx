@@ -51,7 +51,7 @@ export const PersonalModule = (props:any) => {
   const manualSave = () => {
     if (manual.length > 0) {
         const numBytes = getByteSize(manual) 
-        console.log(numBytes)
+
         if (numBytes > 500000) {
             setSuccess({status: false, message: 'Entry cannot exceed 500KB in size.'})
         } else {

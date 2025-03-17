@@ -70,17 +70,13 @@ function createChips(modules:any, scores:any) {
 window.addEventListener("change_prompt_chunk", function (evt) {
   browser.storage.local.get("knowledge").then((result) => {
     url = window.location.href
-    console.log(url, prevURL)
+    // console.log(url, prevURL)
     if (url !== prevURL) {
-      const gptPattern = /^https:\/\/chatgpt\.com\/c\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
-      const claudePattern = /^https:\/\/claude\.ai\/chat\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
-      
-      // New chat window --> reset
-      if (gptPattern.test(prevURL) || claudePattern.test(prevURL)) {
         seenKnowledge = {}
         prevMessage = ''
-      }
     }
+
+    prevURL = url 
 
     if ("knowledge" in result) {
       browser.storage.sync.set({"modules": Object.keys(result["knowledge"])}).then(() => {
@@ -179,11 +175,19 @@ window.addEventListener("change_prompt_chunk", function (evt) {
 window.addEventListener("change_prompt", function (evt) {
   browser.storage.local.get("knowledge").then((result) => {
     url = window.location.href
-    if (url !== prevURL) {
-      const gptPattern = /^https:\/\/chatgpt\.com\/c\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
-      const claudePattern = /^https:\/\/claude\.ai\/chat\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+    const gptPattern = /^https:\/\/chatgpt\.com\/c\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+    const claudePattern = /^https:\/\/claude\.ai\/chat\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 
-      // New window --> reset seen knowledge and previous message
+    // if we are not currently in a chat window, we are starting something new
+    if (!gptPattern.test(url) && evt.detail.origin === 'openai') {
+      seenKnowledge = {}
+      prevMessage = ''
+    } else if (!claudePattern.test(url) && evt.detail.origin === 'claude')  {
+      seenKnowledge = {}
+      prevMessage = ''
+    }
+    else if (url !== prevURL) {
+      // coming out of a chat window into a new chat
       if (gptPattern.test(prevURL) || claudePattern.test(prevURL)) {
         seenKnowledge = {}
         prevMessage = ''
@@ -281,7 +285,6 @@ window.addEventListener("change_prompt", function (evt) {
     .catch((error) => {
       console.log(error)
       // Proceed as if no knowledge was added 
-      console.log('Origin', evt.detail.origin)
       if (evt.detail.origin === 'openai') {
         newBody.messages[0].content.parts = [message.toString()]
         newBody.customFetch = true
@@ -398,7 +401,6 @@ function injectChips(element:any) {
         closeButton.style.fontSize = "8px";
         closeButton.style.borderRadius = "50%";
         closeButton.onclick = () => {
-          console.log('Removed chip', chip)
           browser.runtime.sendMessage({
             type: "remove_chip",
             data: {module: chip, score: relevanceScores[idx], message: originalPrompt}

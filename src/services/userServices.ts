@@ -81,7 +81,6 @@ export default {
             if (response.data) {
                 return {success: true, data: response.data}
             } else {
-                console.log(response)
                 return {success: false, data: response}
             }
         } else {

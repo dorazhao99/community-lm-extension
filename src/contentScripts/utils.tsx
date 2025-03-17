@@ -130,7 +130,6 @@ async function routeDocumentsEmbedding(modules: any, prompt: unknown, prevMessag
 
         browser.runtime.sendMessage({type: 'query_embeddings', data: {modules: JSON.stringify(docs), prompt: combinedPrompt, provider: provider, seenKnowledge: seenKnowledge} })
         .then(response => {
-        console.log('Route Document', response)
           if (response.knowledge) {
             const selectedModules: any = {}
             const selectedScores: any = {}
