@@ -45,7 +45,6 @@ export function CommunityOption(props) {
   
   return (
     <Box>
-      {console.log(moduleIds, props.modules)}
       {
         validChildren.length > 0 ? (
           <Paper className="module">
