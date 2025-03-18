@@ -1,14 +1,23 @@
-# Knoll
-
-[Landing Page](https://knollapp.com) | [Extension](https://chromewebstore.google.com/detail/knoll/fmboebkmcojlljnachnegpbikpnbanfc?hl=en-US&utm_source=ext_sidebar)
-
-Knoll is a browser extension for adding external knowledge to AI chatbots (ChatGPT/Claude). 
-
-The project is open-source and ad-free.
-
-<a href="https://chromewebstore.google.com/detail/knoll/fmboebkmcojlljnachnegpbikpnbanfc?hl=en-US&utm_source=ext_sidebar">
+<h1 align="center">
+<br>
+<img src="https://i.postimg.cc/Gt36ZsMB/logo.png" width="150">
+<br>
+    Knoll
+</h1>
+<p align="center">
+<b>Knoll is a browser extension for adding external knowledge to AI chatbots (ChatGPT/Claude). </b>
+<br><br>  
+    <a href="https://knollapp.com"> Landing Page </a> | <a href="https://chromewebstore.google.com/detail/knoll/fmboebkmcojlljnachnegpbikpnbanfc?hl=en-US&utm_source=ext_sidebar"> Extension </a>
+<br/><br/>
+    The project is open-source and ad-free.
+<br/><br/>
+    <a href="https://chromewebstore.google.com/detail/knoll/fmboebkmcojlljnachnegpbikpnbanfc?hl=en-US&utm_source=ext_sidebar">
     <img src="https://developer.chrome.com/static/docs/webstore/branding/image/mPGKYBIR2uCP0ApchDXE.png">
 </a>
+</p>
+
+
+
 
 ## Features
 Knoll has a rich set of features supporting for both adding the information you want and then integrating it into your model's context when relevant. 
@@ -47,7 +56,7 @@ You want to make Knoll even better? There are lots of ways you can contribute ev
 ### Servers 
 To run the extension, you will need to have our two servers running as well:
 - [Node.js Server](https://github.com/dorazhao99/community-lm-server)
-- [Flask Server](
+- [Flask Server](https://github.com/dorazhao99/community-lm-embedding)
 
 ### Development
 
@@ -55,7 +64,6 @@ To run the extension, you will need to have our two servers running as well:
 pnpm run dev
 ```
 Then **load extension in browser with the `extension/` folder**.
-
 
 
 ### Build
