@@ -7,7 +7,7 @@
 <p align="center">
 <b>Knoll is a browser extension for adding external knowledge to AI chatbots (ChatGPT/Claude). </b>
 <br><br>  
-    <a href="https://knollapp.com"> Landing Page </a> | <a href="https://chromewebstore.google.com/detail/knoll/fmboebkmcojlljnachnegpbikpnbanfc?hl=en-US&utm_source=ext_sidebar"> Extension </a>
+    <a href="https://knollapp.com" target="_blank" rel="noopener"> Landing Page </a> | <a href="https://chromewebstore.google.com/detail/knoll/fmboebkmcojlljnachnegpbikpnbanfc?hl=en-US&utm_source=ext_sidebar" target="_blank" rel="noopener"> Extension </a>
 <br/><br/>
     The project is open-source and ad-free.
 <br/><br/>
