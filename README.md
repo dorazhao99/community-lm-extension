@@ -1,50 +1,43 @@
-# Knoll
+<h1 align="center">
+<br>
+<img src="https://i.postimg.cc/Gt36ZsMB/logo.png" width="150">
+<br>
+    Knoll
+</h1>
+<p align="center">
+<b>Knoll is a browser extension for adding external knowledge to AI chatbots (ChatGPT/Claude). </b>
+<br><br>  
+    <a href="https://knollapp.com" target="_blank" rel="noopener"> Landing Page </a> | <a href="https://chromewebstore.google.com/detail/knoll/fmboebkmcojlljnachnegpbikpnbanfc?hl=en-US&utm_source=ext_sidebar" target="_blank" rel="noopener"> Extension </a>
+<br/><br/>
+    The project is open-source and ad-free.
+<br/><br/>
+    <a href="https://chromewebstore.google.com/detail/knoll/fmboebkmcojlljnachnegpbikpnbanfc?hl=en-US&utm_source=ext_sidebar">
+    <img src="https://developer.chrome.com/static/docs/webstore/branding/image/mPGKYBIR2uCP0ApchDXE.png">
+</a>
+</p>
 
-A [Vite](https://vitejs.dev/) powered WebExtension ([Chrome](https://developer.chrome.com/docs/extensions/reference/), [FireFox](https://addons.mozilla.org/en-US/developers/), etc.) starter template.
 
-Made based on https://github.com/antfu/vitesse-webext, big thanks to @antfu!
+
 
 ## Features
+Knoll has a rich set of features supporting for both adding the information you want and then integrating it into your model's context when relevant. 
+- ✂️ Clip any text on the Internet to store
+- 🔗 Share the text you store with friends
+- 📄 Use any Google Doc or Markdown file you have as a knowledge
+- 🌐 Import existing knowledge repositories that other users have shared
+- 🖥️ Directly integrated into the default chat interface
 
-- ⚡️ **Instant HMR** - use **Vite** on dev (no more refresh!)
-- 🦾 [TypeScript](https://www.typescriptlang.org/) - type safe
-- 🖥 Content Script - UseReact even in content script
-- 🌍 WebExtension - isomorphic extension for Chrome, Firefox, and others
-- 📃 Dynamic `manifest.json` with full type support
+Knoll is directly integrated with the following AI services. 
+- ChatGPT
+- Claude
 
-## Pre-packed
+## Contribution
+You want to make Knoll even better? There are lots of ways you can contribute even if you cannot code yourself:
 
-### WebExtension Libraries
+* **Share this project.** The simplest way of contributing is by sharing this project with your friends and family. 
+* **Report Issues.** If you see some parts of the app not working as expected, if you want to give any kind of feedback or if you just have a question you can submit an issue on the [issue page](https://github.com/dorazhao99/community-lm-extension/issues) of this project or using our [bug report form](https://docs.google.com/forms/d/e/1FAIpQLSfjB7zY4lH6jPOok0rsIu4Qbg2lVXMeJatyM3cReUQlUWV3bQ/viewform).
+* **Write Code.** And then there is the standard way of contributing to an open-source project. Please feel free to submit proposals directly in the form of a PR or Issue.
 
-- [`webextension-polyfill`](https://github.com/mozilla/webextension-polyfill) - WebExtension browser API Polyfill with types
-- [`webext-bridge`](https://github.com/antfu/webext-bridge) - effortlessly communication between contexts
-
-### Coding Style
-
-- [ESLint](https://eslint.org/)
-
-### Dev tools
-
-- [TypeScript](https://www.typescriptlang.org/)
-- [esno](https://github.com/antfu/esno) - TypeScript / ESNext node runtime powered by esbuild
-- [npm-run-all](https://github.com/mysticatea/npm-run-all) - Run multiple npm-scripts in parallel or sequential
-- [web-ext](https://github.com/mozilla/web-ext) - Streamlined experience for developing web extensions
-
-## Use the Template
-
-### GitHub Template
-
-[Create a repo from this template on GitHub](https://github.com/quolpr/react-vite-webext/generate).
-
-### Clone to local
-
-If you prefer to do it manually with the cleaner git history
-
-```bash
-npx degit quolpr/react-vite-webext my-webext
-cd my-webext
-yarn
-```
 
 ## Usage
 
@@ -60,34 +53,29 @@ yarn
   - `dist` - built files, also serve stub entry for Vite on development.
 - `scripts` - development and bundling helper scripts.
 
+### Servers 
+To run the extension, you will need to have our two servers running as well:
+- [Node.js Server](https://github.com/dorazhao99/community-lm-server)
+- [Flask Server](https://github.com/dorazhao99/community-lm-embedding)
+
 ### Development
 
 ```bash
-yarn dev
+pnpm run dev
 ```
-
 Then **load extension in browser with the `extension/` folder**.
 
-For Firefox developers, you can run the following command instead:
-
-```bash
-yarn start:firefox
-```
-
-`web-ext` auto reload the extension when `extension/` files changed.
-
-> While Vite handles HMR automatically in the most of the case, [Extensions Reloader](https://chrome.google.com/webstore/detail/fimgfedafeadlieiabdeeaodndnlbhid) is still recommanded for cleaner hard reloading.
 
 ### Build
 
 To build the extension, run
 
 ```bash
-yarn build
+pnpm run build
 ```
 
 And then pack files under `extension`, you can upload `extension.crx` or `extension.xpi` to appropriate extension store.
 
 ## Credits
 
-This repo was made based on https://github.com/antfu/vitesse-webext
+This repo was made based on https://github.com/antfu/vitesse-webext and https://github.com/StanfordHCI/FeedMonitor
