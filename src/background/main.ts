@@ -67,6 +67,7 @@ if (import.meta.hot) {
   import("./contentScriptHMR");
 }
 
+
 browser.runtime.onInstalled.addListener(({ reason }): void => {
   console.log('Extension installed')
   // Add clipper
@@ -94,6 +95,7 @@ browser.runtime.onInstalled.addListener(({ reason }): void => {
 browser.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
   if (message.type === 'sign_in') {
     browser.storage.sync.set({"uid": message.user, "isAnon": message.isAnon})
+    browser.runtime.setUninstallURL(`${constants.URL}/survey-signup/${message.user}`)
     sendResponse(null)
   } else if (message.type === 'sign_out') {
     browser.storage.sync.remove(["uid", "isAnon"])
@@ -130,11 +132,16 @@ browser.runtime.onMessageExternal.addListener((message, sender, sendResponse) =>
 });
 
 browser.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+  console.log(request.type)
   if (request.type === 'save_module') {
     saveModules(request)
   } else if (request.type === 'popup_open') {
     // Check if data is stored in cache before calliing API
-      return new Promise((resolve, reject) => {
+    if (request.data && request.data.user) {
+      browser.runtime.setUninstallURL(`${constants.URL}/survey-signup/${request.data.user}`)
+    }
+    
+    return new Promise((resolve, reject) => {
         moduleServices
           .fetchModules(request.data)
           .then((response) => {
