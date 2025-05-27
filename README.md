@@ -6,17 +6,25 @@
 </h1>
 <p align="center">
 <b>Knoll is a browser extension for adding external knowledge to AI chatbots (ChatGPT/Claude). </b>
-<br><br>  
-    <a href="https://knollapp.com" target="_blank" rel="noopener"> Landing Page </a> | <a href="https://chromewebstore.google.com/detail/knoll/fmboebkmcojlljnachnegpbikpnbanfc?hl=en-US&utm_source=ext_sidebar" target="_blank" rel="noopener"> Extension </a>
+<br><br> 
+        <a href="https://arxiv.org/abs/2505.19335">
+            <img src="https://img.shields.io/badge/📝-Paper-0392cf">
+        </a>
+        <a href="https://knollapp.com">
+            <img src="https://img.shields.io/badge/🌐-Website-f18f33">
+        </a>
+        <a href="https://chromewebstore.google.com/detail/knoll/fmboebkmcojlljnachnegpbikpnbanfc">
+            <img src="https://img.shields.io/badge/🧩-Chrome%20Extension-8a58d6">
+        </a>
+        <a>
+            <img src="https://img.shields.io/chrome-web-store/users/fmboebkmcojlljnachnegpbikpnbanfc">
+        </a>
+
 <br/><br/>
     The project is open-source and ad-free.
 <br/><br/>
-    <a href="https://chromewebstore.google.com/detail/knoll/fmboebkmcojlljnachnegpbikpnbanfc?hl=en-US&utm_source=ext_sidebar">
-    <img src="https://developer.chrome.com/static/docs/webstore/branding/image/mPGKYBIR2uCP0ApchDXE.png">
 </a>
 </p>
-
-
 
 
 ## Features
