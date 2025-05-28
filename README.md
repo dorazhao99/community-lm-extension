@@ -16,9 +16,6 @@
         <a href="https://chromewebstore.google.com/detail/knoll/fmboebkmcojlljnachnegpbikpnbanfc">
             <img src="https://img.shields.io/badge/🧩-Chrome%20Extension-8a58d6">
         </a>
-        <a>
-            <img src="https://img.shields.io/chrome-web-store/users/fmboebkmcojlljnachnegpbikpnbanfc">
-        </a>
 
 <br/><br/>
     The project is open-source and ad-free.
