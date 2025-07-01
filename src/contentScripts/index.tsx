@@ -7,84 +7,30 @@ import { ContentApp } from "./views/ContentApp";
 import { routeDocumentsEmbedding, routeDocumentsEmbeddingChunks, getConversationId } from "./utils";
 import constants from "~/services/constants";
 
-// global variable for which modules are injected 
-interface Cache {
-  [key: string]: boolean;
-}
-
 var prevURL:string = ""; 
 var url: string=""; 
-var activatedChips:Array<Object> = []
-var relevanceScores:Array<Object> = []
-var seenKnowledge:Cache = {}
-var prevMessage = ""
+var prevMessage = "" // Keep track of previous messages in case you want to include it when generating the new prompt
 var originalPrompt = ""
+var activatedChips:Array<Object> = []
 
 // CSS for chip
 const RequestVariables = {
-  promptHeader: `
-    You are a helpful and knowledgeable assistant that provides answers to a user's query.
-    \n We provide additional knowledge that might be helpful for answering the query.
-    Let's think step by step. 
-    1. Check whether the knowledge is relevant to the query. If the knowledge is relevant, incorporate it when answering.
-    2. If the knowledge is NOT relevant, disregard the knowledge, do NOT make reference to it, and answer the query. Ignore information that is irrelevant. Do NOT search the web if you have sufficient knowledge.\n
-    3. Check whether there are conflicts in the knowledge. Report conflicts in the output if they exist.
-    \nKnowledge:<cllm>`,
-  promptHeaderChunk: `
-    <KNOLL> You are a helpful and knowledgeable assistant that provides answers to a user's query.
-    \n We provide additional knowledge that might be helpful for answering the query. Ignore information that is irrelevant.
-    Let's think step by step. 
-    1. Check whether the knowledge is relevant to the query. If the knowledge is relevant, incorporate it when answering.
-    If the knowledge is NOT relevant, disregard the knowledge, do NOT make reference to it, and answer the query. Do NOT search the web if you have sufficient knowledge.\n
-    2. Check whether there are conflicts in the knowledge. Report conflicts in the output if they exist.
-    \nKnowledge:<cllm>`
-}
-
-const ALPHA_SCALE = 1.2 // scales the alpha of the chips
-
-// function createPrompt(result) {
-//   const allKnowledge:any = []
-//   activatedChips = []
-//   Object.keys(result).forEach(mod => {
-//     activatedChips.push(result[mod])
-//     allKnowledge.push(result[mod].knowledge)
-//   })
-//   return allKnowledge.join("\n")
-// }
-
-function createChips(modules:any, scores:any) {
-  activatedChips = []
-  relevanceScores = []
-  Object.keys(modules).forEach(mod => {
-    let chipScore;
-    try {
-      chipScore = scores[mod] * ALPHA_SCALE
-    } catch {
-      chipScore = 0.3
-    }
-    activatedChips.push({id: mod, ...modules[mod]})
-    relevanceScores.push(chipScore)
-  })
+  promptHeader: ``,
+  promptHeaderChunk: ``
 }
 
 window.addEventListener("change_prompt_chunk", function (evt) {
-  browser.storage.local.get("knowledge").then((result) => {
+    /*
+      This event is emitted when the user is on the free version of ChatGPT -- note here you have
+      much smaller context windows you can inject into the message
+    */
     url = window.location.href
-    // console.log(url, prevURL)
+
+    // Keep track of what the previous URL is in case you only want to inject the prompt once
     if (url !== prevURL) {
-        seenKnowledge = {}
         prevMessage = ''
     }
-
     prevURL = url 
-
-    if ("knowledge" in result) {
-      browser.storage.sync.set({"modules": Object.keys(result["knowledge"])}).then(() => {
-        return new Promise((resolve, reject) => {
-          resolve(null)
-        })
-      });
-    }
 
     const options = JSON.parse(evt.detail.options)
     const newBody = JSON.parse(options.body)
@@ -95,116 +41,69 @@ window.addEventListener("change_prompt_chunk", function (evt) {
     const conversationId = newBody?.parent_message_id
     originalPrompt = message[0]
 
-    routeDocumentsEmbeddingChunks(result["knowledge"], message, prevMessage, seenKnowledge)
-    .then((response:any) => {
-      const moduleNames = response.modules
-      let newMessage = [...message]
-      prevMessage = newMessage.join(' ')
+    let newMessage = [...message]
+    /*
+      TODO: Change to your prompt or query an API that will provide you with the prompt you need
+      See utils.tsx for example of how to query an API
+    */
+    const newPrompt = "Respond to the message as if you are a pirate"
+    newMessage = [newPrompt, ...message]
+    newBody.messages[0].content.parts = newMessage
+    newBody.customFetch = true
 
-      if (moduleNames.length === 0) {
-        activatedChips = []
-        relevanceScores = []
-      } 
-
-      let knowledge = '';
-      if (response.knowledge) {
-        knowledge = response.knowledge
-        seenKnowledge = response.seenKnowledge
-        createChips(response.modules, response.scores)
-      }
-
-      const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
-      newMessage = [combinedKnowledge, ...message]
-      newBody.messages[0].content.parts = newMessage
-      newBody.customFetch = true
-
-      const modifiedOptions = {
+    const modifiedOptions = {
           ...options,
           body: JSON.stringify(newBody),
-      }
+    }
 
-      const event = new CustomEvent("send_prompt",
-          {
-              detail: {
-                  resource: evt.detail.resource, 
-                  modifiedOptions: JSON.stringify(modifiedOptions), 
-                  originalPrompt: originalPrompt
-              }
-          });
+    const event = new CustomEvent("send_prompt",
+    {
+        detail: {
+            resource: evt.detail.resource, 
+            modifiedOptions: JSON.stringify(modifiedOptions), 
+            originalPrompt: originalPrompt
+        }
+    });
 
-      const messageData = {
-        message: message,
-        modules: moduleNames,
-        messageId: messageId,
-        conversationId: conversationId,
-        provider: origin
-      }
+    const messageData = {
+      message: message,
+      messageId: messageId,
+      conversationId: conversationId,
+      provider: origin
+    }
 
-      window.dispatchEvent(event);
-      browser.runtime.sendMessage({
+    window.dispatchEvent(event);
+    browser.runtime.sendMessage({
         type: "sent_message",
         data: messageData
-      })
     })
-    .catch((error) => {
-      console.error(error)
-      newBody.messages[0].content.parts = [message.toString()]
-      newBody.customFetch = true
-      
-      const modifiedOptions = {
-          ...options,
-          body: JSON.stringify(newBody),
-      }
-      const event = new CustomEvent("send_prompt",
-          {
-              detail: {
-                  resource: evt.detail.resource, 
-                  modifiedOptions: JSON.stringify(modifiedOptions), 
-                  originalPrompt: originalPrompt
-              }
-          });
-
-      window.dispatchEvent(event);
-      browser.runtime.sendMessage({
-        type: "sent_message",
-      })
-    })
-  });
 }, false);
 
 window.addEventListener("change_prompt", function (evt) {
-  browser.storage.local.get("knowledge").then((result) => {
+    /*
+      This event is emitted when the user is on the paid version of ChatGPT / Claude -- note here you have
+      a larger context windows you can inject into the message
+    */
     url = window.location.href
     const gptPattern = /^https:\/\/chatgpt\.com\/c\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
     const claudePattern = /^https:\/\/claude\.ai\/chat\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 
-    // if we are not currently in a chat window, we are starting something new
+    // Optional: If we are not currently in a chat window, we are starting something new
     if (!gptPattern.test(url) && evt.detail.origin === 'openai') {
-      seenKnowledge = {}
       prevMessage = ''
     } else if (!claudePattern.test(url) && evt.detail.origin === 'claude')  {
-      seenKnowledge = {}
       prevMessage = ''
     }
     else if (url !== prevURL) {
       // coming out of a chat window into a new chat
       if (gptPattern.test(prevURL) || claudePattern.test(prevURL)) {
-        seenKnowledge = {}
         prevMessage = ''
       }
     }
 
     prevURL = url
 
-    if ("knowledge" in result) {
-      browser.storage.sync.set({"modules": Object.keys(result["knowledge"])}).then(() => {
-        return new Promise((resolve, reject) => {
-          resolve(null)
-        })
-      });
-    }
-
-    // Update prompt with knowledge 
+    // Update prompt with injected information
     const options = JSON.parse(evt.detail.options)
     const newBody = JSON.parse(options.body)
     const origin = evt.detail.origin
@@ -213,118 +112,59 @@ window.addEventListener("change_prompt", function (evt) {
     const messageId = origin === 'openai' ? newBody.messages[0].id : newBody.parent_message_uuid
     const conversationId = origin === 'openai' ? newBody?.parent_message_id : getConversationId()
     originalPrompt = origin === 'openai' ? message[0] : message
+    
+    let newMessage = origin === 'openai' ? [...message] : message
+    prevMessage = origin === 'openai' ? newMessage.join(' ') : newMessage
+    /*
+      TODO: Change to your prompt or query an API that will provide you with the prompt you need
+      See utils.tsx for example of how to query an API
+    */
+    const newPrompt = "Respond to the message as if you are a pirate" 
+    if (origin === 'openai') {
+      newMessage = [newPrompt, ...message]
+      newBody.messages[0].content.parts = newMessage
+      newBody.customFetch = true
+    } else if (origin === 'claude') {
+      newMessage = `<cllm> ${newPrompt} </cllm> ${message}`
+      newBody.prompt = newMessage
+    }
 
-    routeDocumentsEmbedding(result["knowledge"], message, prevMessage, origin, seenKnowledge)
-    .then((response:any) => {
-        let moduleNames = [];
-        let scores = []; 
-        let newMessage = origin === 'openai' ? [...message] : message
-        prevMessage = origin === 'openai' ? newMessage.join(' ') : newMessage
-        
-        if (response.modules) {
-          let knowledge = '';
-          if (Object.keys(response.modules).length === 0) {
-            activatedChips = []
-            relevanceScores = []
-          } 
-          
-          if (response.knowledge) {
-            moduleNames = response.modules
-            knowledge = response.knowledge
-            scores = response.scores
-            seenKnowledge = response.seenKnowledge
-            createChips(response.modules, scores)
-          } 
-
-          const combinedKnowledge = `${RequestVariables.promptHeader} ${knowledge}</cllm>`;
-          if (origin === 'openai') {
-            newMessage = [combinedKnowledge, ...message]
-            newBody.messages[0].content.parts = newMessage
-            newBody.customFetch = true
-          } else if (origin === 'claude') {
-            newMessage = `<KNOLL> ${combinedKnowledge} ${message}`
-            newBody.prompt = newMessage
-          }
-        } else {
-          if (origin === 'openai') {
-            newBody.customFetch = true
-          } else if (origin === 'claude') {
-            newMessage = `<KNOLL> ${message}`
-            newBody.prompt = newMessage
-          }
-        }
-
-        const modifiedOptions = {
-          ...options,
-          body: JSON.stringify(newBody),
-        }
-        const event = new CustomEvent("send_prompt",
-            {
-                detail: {
-                    resource: evt.detail.resource, 
-                    modifiedOptions: JSON.stringify(modifiedOptions), 
-                    originalPrompt: originalPrompt
-                }
+  
+    const modifiedOptions = {
+      ...options,
+      body: JSON.stringify(newBody),
+    }
+    const event = new CustomEvent("send_prompt",
+        {
+            detail: {
+                resource: evt.detail.resource, 
+                modifiedOptions: JSON.stringify(modifiedOptions), 
+                originalPrompt: originalPrompt
             }
-        );
-
-        const messageData = {
-          message: message,
-          modules: moduleNames,
-          messageId: messageId,
-          conversationId: conversationId,
-          provider: origin
         }
+    );
 
-        window.dispatchEvent(event);
-        browser.runtime.sendMessage({
-          type: "sent_message",
-          data: messageData
-        })
+    const messageData = {
+      message: message,
+      messageId: messageId,
+      conversationId: conversationId,
+      provider: origin
+    }
+
+    window.dispatchEvent(event);
+    browser.runtime.sendMessage({
+      type: "sent_message",
+      data: messageData
     })
-    .catch((error) => {
-      console.log(error)
-      // Proceed as if no knowledge was added 
-      if (evt.detail.origin === 'openai') {
-        newBody.messages[0].content.parts = [message.toString()]
-        newBody.customFetch = true
-      } else {
-        newBody.prompt = `<KNOLL> ${message}`
-      }
-
-      const modifiedOptions = {
-          ...options,
-          body: JSON.stringify(newBody),
-      }
-      const event = new CustomEvent("send_prompt",
-          {
-              detail: {
-                  resource: evt.detail.resource, 
-                  modifiedOptions: JSON.stringify(modifiedOptions), 
-                  originalPrompt: originalPrompt
-              }
-          })
-      ;
-
-      window.dispatchEvent(event);
-      browser.runtime.sendMessage({
-        type: "sent_message",
-      })
-    })
-  });
 }, false);
 
 async function addSurvey() {
   const localData = await browser.storage.local.get()
-  const currentDate = new Date()
-  const showSurveyDate = localData.showSurveyDate ? new Date(localData.showSurveyDate) : new Date()
-  const seenSurvey = localData.seenSurvey ? localData.seenSurvey : 0
-  const syncData = await browser.storage.sync.get("uid")
-  const uid = syncData?.uid 
-  if (currentDate >= showSurveyDate && seenSurvey <= 5 && uid) {
+  let showCondition = false
+  if (showCondition) {
       // add HTML for survey
       const box = document.createElement("div");
-      box.innerText = "Thank you for using Knoll! The Stanford HCI team is running an evaluation of your experience using the system through a <10 minute survey and optional interview. You will receive a $10 gift card for completing the survey.";
+      box.innerText = "This is an inline survey.";
       box.style.position = "fixed";
       box.style.top = "10px";
       box.style.left = "50%";
@@ -342,17 +182,6 @@ async function addSurvey() {
       box.style.flexDirection="column";
       box.style.alignItems = "center";
       box.style.gap = "10px";
-  
-      let button = document.createElement("a");
-      button.href = `${constants.URL}/survey-signup/${uid}`
-      button.className = "button";
-      button.textContent = "Sign Up";
-      button.target = "_blank";
-      button.style.backgroundColor = "#7091E6";
-      button.style.padding = "0.5rem 1rem";
-      button.style.borderRadius="12px";
-      button.style.color="white"
-      box.appendChild(button); 
   
       const closeButton = document.createElement("button");
       closeButton.innerText = "✖";
@@ -373,49 +202,24 @@ async function addSurvey() {
       };
       box.appendChild(closeButton);
       document.body.appendChild(box);
-      browser.storage.local.set({"seenSurvey": seenSurvey + 1})
   }
 }
 
 function injectChips(element:any) {
   let labelsWrapper = document.createElement("div");
   labelsWrapper.classList.add("module-container");
-
+  activatedChips = ['Test']
   activatedChips.forEach((chip, idx) => {
-      const name = chip.name ? chip.name: "Unnamed Module"
-      let chipWrapper = document.createElement("div")
-      let chipElement = document.createElement("a");
-      chipElement.href = chip.link ? chip.link : "";
-      chipElement.classList.add("value-chip");
-      chipElement.textContent = name;     // TO-DO Query Store for the modules mapping to message
-      chipElement.target = "_blank";
-      chipWrapper.appendChild(chipElement)
-  
-      if (chip.id !== 'personal') {
-        const closeButton = document.createElement("button");
-        closeButton.innerText = "✖";
-        closeButton.style.color = "white";
-        closeButton.style.border = "none";
-        closeButton.style.padding = "0 8px";
-        closeButton.style.cursor = "pointer";
-        closeButton.style.fontSize = "8px";
-        closeButton.style.borderRadius = "50%";
-        closeButton.onclick = () => {
-          browser.runtime.sendMessage({
-            type: "remove_chip",
-            data: {module: chip, score: relevanceScores[idx], message: originalPrompt}
-          })
-          .then(response => {
-            if (response.success) {
-              chipWrapper.remove();
-            }
-          })
-        };
-        chipWrapper.appendChild(closeButton);
-      }
-      chipWrapper.className = "chip";
-      chipWrapper.style.backgroundColor = `rgba(112, 145, 230, ${relevanceScores[idx]})`; 
-      labelsWrapper.appendChild(chipWrapper); 
+        const name = 'Chip Name'
+        let chipWrapper = document.createElement("div")
+        let chipElement = document.createElement("a");
+        chipElement.classList.add("value-chip");
+        chipElement.textContent = name;     // TO-DO Query Store for the modules mapping to message
+        chipElement.target = "_blank";
+        chipWrapper.appendChild(chipElement)
+        chipWrapper.className = "chip";
+        chipWrapper.style.backgroundColor = `rgba(112, 145, 230, 1)`; 
+        labelsWrapper.appendChild(chipWrapper); 
   })
 
   const style = document.createElement("style");
@@ -443,28 +247,22 @@ function observeMessages() {
 
   if (location.includes('chatgpt.com') || location.includes('chat.com')) {
     if (window.location.pathname === '/') {
-      addSurvey()
+      // addSurvey() // Uncomment if you want to add an inline survey each time you open a new page
     }
     const mainElement = document.querySelector('main');
     if (mainElement) {
       const config = { childList: true, subtree: true };
-      // let addedChip = false
       const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
           mutation.addedNodes.forEach((node) => {
             // Check if the node added is a chat message
             if (node.nodeType === 1) {
               const attributes = node.attributes ? node.attributes : undefined
-              // if (node.classList && node.classList.contains('markdown') && !addedChip) {
-              //   addedChip = true
-              //   console.log('Chip 2', node)
-              //   injectChips(node)
-              // } 
               if (attributes) {
                 const namedValue = attributes.getNamedItem("data-message-author-role");
                 if (namedValue) {
                   if (namedValue.value === "assistant") {
-                    injectChips(node)
+                    injectChips(node) // Uncomment if you want to add interface chips at the bottom of each message
                   }
                 }
               } 
@@ -477,46 +275,22 @@ function observeMessages() {
   }
   else if (location.includes('claude.ai')) {
     if (window.location.pathname === '/' || window.location.pathname === '/new') {
-      addSurvey()
+      // addSurvey() // Uncomment if you want to add an inline survey each time you open a new page
     }
     function appendDivToNewX(targetDiv) {
       let labelsWrapper = document.createElement("div");
       labelsWrapper.classList.add("module-container");
-
+      let activatedChips = ['Test']
       activatedChips.forEach((chip, idx) => {
-        const name = chip.name ? chip.name: "Unnamed Module"
+        const name = 'Chip Name'
         let chipWrapper = document.createElement("div")
         let chipElement = document.createElement("a");
-        chipElement.href = chip.link ? chip.link : "";
         chipElement.classList.add("value-chip");
         chipElement.textContent = name;     // TO-DO Query Store for the modules mapping to message
         chipElement.target = "_blank";
         chipWrapper.appendChild(chipElement)
-    
-        if (chip.id !== 'personal') {
-          const closeButton = document.createElement("button");
-          closeButton.innerText = "✖";
-          closeButton.style.color = "white";
-          closeButton.style.border = "none";
-          closeButton.style.padding = "0 8px";
-          closeButton.style.cursor = "pointer";
-          closeButton.style.fontSize = "8px";
-          closeButton.style.borderRadius = "50%";
-          closeButton.onclick = () => {
-            browser.runtime.sendMessage({
-              type: "remove_chip",
-              data: {module: chip, score: relevanceScores[idx], message: originalPrompt}
-            })
-            .then(response => {
-              if (response.success) {
-                chipWrapper.remove();
-              }
-            })
-          };
-          chipWrapper.appendChild(closeButton);
-        }
         chipWrapper.className = "chip";
-        chipWrapper.style.backgroundColor = `rgba(112, 145, 230, ${relevanceScores[idx]})`; 
+        chipWrapper.style.backgroundColor = `rgba(112, 145, 230, 1)`; 
         labelsWrapper.appendChild(chipWrapper); 
       })
 
@@ -548,7 +322,7 @@ function observeMessages() {
                 if (mutation.target.className.includes('font-claude-message') && !addedChip) {
                   mutation.addedNodes.forEach(node => {
                     if (node.nodeType === Node.ELEMENT_NODE) {
-                      appendDivToNewX(node)
+                      // appendDivToNewX(node) // Uncomment if you want to add interface chips to Claude
                     }
                   });
                 }
@@ -558,11 +332,9 @@ function observeMessages() {
     
     // Set up the observer
     const observer = new MutationObserver(observerCallback);
-    
-    // Start observing the document body for child node additions
     observer.observe(document.body, {
-        childList: true, // Monitor direct children being added/removed
-        subtree: true    // Monitor changes within all descendants
+        childList: true, 
+        subtree: true 
     });
   }
 }
@@ -590,33 +362,4 @@ document.addEventListener('DOMContentLoaded', observeMessages);
       });
     }
   });
-
-
-  // communication example: send previous tab title from background page
-  // onMessage("tab-prev", ({ data }) => {
-  //   console.log(`[vitesse-webext] Navigate from page "${data}"`);
-  // });
-
-  // // mount component to context window
-  // const container = document.createElement("div");
-  // const root = document.createElement("div");
-  // const styleEl = document.createElement("link");
-  // const shadowDOM =
-  //   container.attachShadow?.({ mode: __DEV__ ? "open" : "closed" }) ||
-  //   container;
-  // styleEl.setAttribute("rel", "stylesheet");
-  // styleEl.setAttribute(
-  //   "href",
-  //   browser.runtime.getURL("dist/contentScripts/style.css")
-  // );
-  // shadowDOM.appendChild(styleEl);
-  // shadowDOM.appendChild(root);
-  // document.body.appendChild(container);
-
-  // ReactDOM.render(
-  //   <React.StrictMode>
-  //     <ContentApp />
-  //   </React.StrictMode>,
-  //   root
-  // );
 })();

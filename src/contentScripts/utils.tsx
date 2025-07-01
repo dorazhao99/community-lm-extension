@@ -1,4 +1,3 @@
-import BM25 from "okapibm25";
 import constants from "~/services/constants";
 
 function getByteSize(clipping:string) {
@@ -54,43 +53,11 @@ function remove_stopwords(str:string) {
     return res.join(' ')
 }  
 
-async function routeDocuments(modules: any, prompt: any) {
-    const top_k = 5
-    const docs = []
-    const moduleNames:Array<string> = []
-    for (const [key, value] of Object.entries(modules)) {
-        const cleaned = escapeRegExp(remove_stopwords(value.knowledge))
-        docs.push(cleaned)
-        moduleNames.push(key)
-    }
-      
-    prompt = Array.isArray(prompt) ? prompt.join(' ') : prompt
-    const q = escapeRegExp(remove_stopwords(prompt)).split(' ')
-    const result = BM25(docs, q, { k1: 1.3, b: 0.9 }) as number[];
-
-    const sortedIndices = result
-        .map((value, index) => ({ value, index })) 
-        .sort((a, b) => b.value - a.value)        
-        .map(item => item.index); 
-            
-    const selectedModules:any = {}
-    sortedIndices.slice(0, top_k).forEach((_, idx) => {
-        const modName = moduleNames[idx]
-        selectedModules[modName] = modules[modName]
-    })
-
+async function dummyFunction(prompt: str) {
     const promise = new Promise((resolve, reject) => {
-        browser.runtime.sendMessage({type: 'query_gpt', data: {modules: JSON.stringify(selectedModules), query: prompt} })
+        browser.runtime.sendMessage({type: 'dummy_function', data: {prompt: prompt} })
         .then(response => {
-          const returnedKnowledge:any = {}
-          if (response.modules) {
-              response.modules.forEach(module => {
-                  returnedKnowledge[module] = modules[module]
-              })
-              resolve(returnedKnowledge)
-          } else {
-              resolve({})
-          }
+          resolve(response)
         })
         .catch(error => {
             console.error(error)
@@ -103,102 +70,6 @@ async function routeDocuments(modules: any, prompt: any) {
    
 }
 
-async function routeDocumentsEmbedding(modules: any, prompt: unknown, prevMessage: string, provider: string, seenKnowledge: unknown) {
-    const docs:any = {}
-    const moduleNames:Array<string> = []
-
-    // get embedding for prompt
-    const body = {
-        sentence: prompt
-    }
-
-    // SHOULD CACHE THIS AT SOME POINT 
-    for (const [key, value] of Object.entries(modules)) {
-        docs[key] = value
-        moduleNames.push(key)
-    }
-
-    let module;
-
-    const promise = new Promise((resolve, reject) => {
-        let combinedPrompt = prompt 
-        try {
-            combinedPrompt = prevMessage + ' ' + prompt
-        } catch {
-            console.log('Error combining prompt', combinedPrompt, prevMessage)
-        }
-
-        browser.runtime.sendMessage({type: 'query_embeddings', data: {modules: JSON.stringify(docs), prompt: combinedPrompt, provider: provider, seenKnowledge: seenKnowledge} })
-        .then(response => {
-          if (response.knowledge) {
-            const selectedModules: any = {}
-            const selectedScores: any = {}
-            response.modules.forEach(idx => {
-                module = moduleNames[idx]
-                selectedModules[module] = modules[module]
-                selectedScores[module] = response.scores[idx]
-            })
-           
-            resolve({knowledge: response.knowledge, modules: selectedModules, scores: selectedScores, seenKnowledge: response.seenKnowledge})
-          } else {
-            resolve({})          
-          }
-        })
-        .catch(error => {
-            console.log(error)
-            resolve({})
-        })
-    })
-
-    const output = await promise;
-    return output;
-   
-}
-
-async function routeDocumentsEmbeddingChunks(modules: any, prompt: any, prevMessage: string, seenKnowledge: unknown) {
-    const docs:any = {}
-    const moduleNames:Array<string> = []
-
-    for (const [key, value] of Object.entries(modules)) {
-        docs[key] = value
-        moduleNames.push(key)
-    }
-
-    let module;
-
-    const promise = new Promise((resolve, reject) => {
-        let combinedPrompt = prompt 
-        try {
-            combinedPrompt = prevMessage + ' ' + prompt
-        } catch {
-            console.log('Error combining prompt', combinedPrompt, prevMessage)
-        }
-        
-        browser.runtime.sendMessage({type: 'query_embeddings_chunks', data: {modules: JSON.stringify(docs), prompt: combinedPrompt, seenKnowledge: seenKnowledge} })
-        .then(response => {
-          if (response.knowledge) {
-              const selectedModules: any = {}
-              const selectedScores: any = {}
-              response.modules.forEach(idx => {
-                module = moduleNames[idx]
-                selectedModules[module] = modules[module]
-                selectedScores[module] = response.scores[idx]
-              })
-              resolve({knowledge: response.knowledge, modules: selectedModules, scores: selectedScores, seenKnowledge: response.seenKnowledge})
-          } else {
-              resolve({})
-          }
-        })
-        .catch(error => {
-            console.error(error)
-            resolve({})
-        })
-    })
-
-    const output = await promise;
-    return output;
-   
-}
 
 function getConversationId() {
     const link = window.location.href
@@ -207,10 +78,8 @@ function getConversationId() {
 }
 
 export {
-    routeDocuments,
-    routeDocumentsEmbedding,
+    dummyFunction,
     splitTextIntoChunks,
-    routeDocumentsEmbeddingChunks,
     getConversationId,
     getByteSize
 }

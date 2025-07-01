@@ -1,8 +1,8 @@
 {
-  "name": "Knoll",
-  "displayName": "Knoll",
-  "version": "0.2.6",
-  "description": "Build and create custom knowledge repositories that you can easily incorporate into LLMs.",
+  "name": "llm_wizard",
+  "displayName": "LLM Wizard",
+  "version": "0.0.1",
+  "description": "Interject your own customizations for commercial LLMs directly on the web interface.",
   "private": true,
   "scripts": {
     "dev": "npm run clear && cross-env NODE_ENV=development run-p dev:prepare dev:background dev:web dev:js dev:serialCopy",

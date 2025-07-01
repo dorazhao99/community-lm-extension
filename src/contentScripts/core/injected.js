@@ -1,8 +1,4 @@
-console.log('Knoll enabled')
-// const RequestVariables = {
-//   knowledge: ['CS 547 is from 11:30-12:30 on Fridays'],
-//   promptHeader: 'Here is additional knowledge that be useful for the prompt. Disregard the knowledge if not relevant.\nKnowledge:'
-// }
+console.log('LLM Wizard enabled')
 
 const originalFetch = window.fetch
 let prevLines = []
@@ -140,13 +136,14 @@ function chunkString(str, N) {
   return chunks;
 }
 
+
 window.fetch = async (...args) => {
+  // Intercept post requests when a prompt is submitted by the user
   const [resource, options] = args
   const method = options?.method
   if (method === 'POST' && (resource.includes('backend-anon/conversation') || resource.includes('backend-api/conversation'))) {
     const newBody = JSON.parse(options.body)
     const customFetch = newBody.customFetch ? true : false // synthetic fetch request or not
-    console.log('Custom Fetch', customFetch)
     const extraInfo = newBody.extraInfo ? true : false
     if ('messages' in newBody && !customFetch && !extraInfo) {
         if (newBody.model === 'auto') {
@@ -258,6 +255,8 @@ window.fetch = async (...args) => {
       return originalFetch(...args)
     }
   }
+
+  // Interject when reading from conversations to remove inserted content from message
   else if (method === 'GET' && (resource.includes('backend-anon/conversation/') || resource.includes('backend-api/conversation/'))) {
     const headers = options.headers 
     const customFetch = headers.customFetch ? true : false
@@ -306,7 +305,7 @@ window.fetch = async (...args) => {
   // handlers for Claude
   else if (method ==='POST' && (resource.includes('chat_conversation')) && (resource.includes('completion'))) {
     const newBody = JSON.parse(options.body)
-    const customFetch = newBody.prompt.trim().startsWith("<KNOLL>")
+    const customFetch = newBody.prompt.trim().startsWith("<LLMWizard>")
     if ('prompt' in newBody && !customFetch) {
       const event = new CustomEvent("change_prompt", {
           detail: {
@@ -362,7 +361,7 @@ window.fetch = async (...args) => {
       outputs.chat_messages.forEach(message => {
         if (message.sender === 'human') {
           message.content.forEach(content => {
-            if (content.text.startsWith('<KNOLL>')) {
+            if (content.text.startsWith('<cllm>')) {
               const searchTerm = "</cllm>";
               const index = content.text.indexOf(searchTerm);  // Find the first occurrence of </cllm>
               if (index !== -1) {
