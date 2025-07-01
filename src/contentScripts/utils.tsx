@@ -1,5 +1,26 @@
 import constants from "~/services/constants";
 
+async function dummyFunction(prompt: str) {
+    /*
+        Example function that makes a call to the background that will then send a message
+        to the server call in (services/)
+    */
+    const promise = new Promise((resolve, reject) => {
+        browser.runtime.sendMessage({type: 'dummy_function', data: {prompt: prompt} })
+        .then(response => {
+          resolve(response)
+        })
+        .catch(error => {
+            console.error(error)
+            resolve({})
+        })
+    })
+
+    const output = await promise;
+    return output;
+   
+}
+
 function getByteSize(clipping:string) {
     const blob = new Blob([JSON.stringify(clipping)]); // Convert to Blob to get size
     return blob.size; // Return size in bytes
@@ -52,24 +73,6 @@ function remove_stopwords(str:string) {
     }
     return res.join(' ')
 }  
-
-async function dummyFunction(prompt: str) {
-    const promise = new Promise((resolve, reject) => {
-        browser.runtime.sendMessage({type: 'dummy_function', data: {prompt: prompt} })
-        .then(response => {
-          resolve(response)
-        })
-        .catch(error => {
-            console.error(error)
-            resolve({})
-        })
-    })
-
-    const output = await promise;
-    return output;
-   
-}
-
 
 function getConversationId() {
     const link = window.location.href
