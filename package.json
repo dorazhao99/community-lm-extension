@@ -11,7 +11,7 @@
     "dev:background": "npm run build:background -- --mode development",
     "dev:web": "vite --force",
     "dev:js": "npm run build:js -- --mode development",
-    "dev:serialCopy": "sleep 25 && npm run dev:copyFiles",
+    "dev:serialCopy": "sleep 5 && npm run dev:copyFiles",
     "dev:copyFiles": "node scripts/copyFiles.js",
     "build": "cross-env NODE_ENV=production run-s clear build:web build:prepare build:background build:js && node scripts/copyFiles.js",
     "build:prepare": "esno scripts/prepare.ts",

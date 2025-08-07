@@ -7,6 +7,12 @@ console.log('Knoll enabled')
 const originalFetch = window.fetch
 let prevLines = []
 
+function includesValidPattern(inputString) {
+  // checks if it matches OpenAI's pattern
+  const regex = /(?:backend-anon|backend-api)\/(?:[^/]+\/)?conversation/;
+  return regex.test(inputString);
+}
+
 
 function editString(inputString, originalMessage, remove) {
   const lines = inputString.split('\n');
@@ -143,7 +149,8 @@ function chunkString(str, N) {
 window.fetch = async (...args) => {
   const [resource, options] = args
   const method = options?.method
-  if (method === 'POST' && (resource.includes('backend-anon/conversation') || resource.includes('backend-api/conversation'))) {
+  if (method === 'POST' && (includesValidPattern(resource))) {
+    console.log("in body")
     const newBody = JSON.parse(options.body)
     const customFetch = newBody.customFetch ? true : false // synthetic fetch request or not
     console.log('Custom Fetch', customFetch)
