@@ -1,6 +1,7 @@
 import constants from "~/services/constants";
 
-async function dummyFunction(prompt: str) {
+
+async function dummyFunction(prompt: string) {
     /*
         Example function that makes a call to the background that will then send a message
         to the server call in (services/)
@@ -84,5 +85,5 @@ export {
     dummyFunction,
     splitTextIntoChunks,
     getConversationId,
-    getByteSize
+    getByteSize,
 }

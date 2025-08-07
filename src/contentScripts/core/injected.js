@@ -3,6 +3,11 @@ console.log('LLM Wizard enabled')
 const originalFetch = window.fetch
 let prevLines = []
 
+function includesValidPattern(inputString) {
+  // checks if it matches OpenAI's pattern
+  const regex = /(?:backend-anon|backend-api)\/(?:[^/]+\/)?conversation/;
+  return regex.test(inputString);
+}
 
 function editString(inputString, originalMessage, remove) {
   const lines = inputString.split('\n');
@@ -141,7 +146,8 @@ window.fetch = async (...args) => {
   // Intercept post requests when a prompt is submitted by the user
   const [resource, options] = args
   const method = options?.method
-  if (method === 'POST' && (resource.includes('backend-anon/conversation') || resource.includes('backend-api/conversation') || resource.includes('backend-api/f/conversation'))) {
+  // if (method === 'POST' && (resource.includes('backend-anon/conversation') || resource.includes('backend-api/conversation') || resource.includes('backend-api/f/conversation'))) {
+  if (method === 'POST' && (includesValidPattern(resource))) {
     const newBody = JSON.parse(options.body)
     const customFetch = newBody.customFetch ? true : false // synthetic fetch request or not
     const extraInfo = newBody.extraInfo ? true : false
