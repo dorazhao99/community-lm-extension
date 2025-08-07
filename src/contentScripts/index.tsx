@@ -31,11 +31,11 @@ window.addEventListener("change_prompt_chunk", function (evt) {
         prevMessage = ''
     }
     prevURL = url 
-
+    
     const options = JSON.parse(evt.detail.options)
     const newBody = JSON.parse(options.body)
     const origin = evt.detail.origin
-
+    console.log('Options', options)
     const message = newBody.messages[0].content.parts
     const messageId = newBody.messages[0].id
     const conversationId = newBody?.parent_message_id

@@ -141,10 +141,11 @@ window.fetch = async (...args) => {
   // Intercept post requests when a prompt is submitted by the user
   const [resource, options] = args
   const method = options?.method
-  if (method === 'POST' && (resource.includes('backend-anon/conversation') || resource.includes('backend-api/conversation'))) {
+  if (method === 'POST' && (resource.includes('backend-anon/conversation') || resource.includes('backend-api/conversation') || resource.includes('backend-api/f/conversation'))) {
     const newBody = JSON.parse(options.body)
     const customFetch = newBody.customFetch ? true : false // synthetic fetch request or not
     const extraInfo = newBody.extraInfo ? true : false
+    console.log('Intercept', newBody)
     if ('messages' in newBody && !customFetch && !extraInfo) {
         if (newBody.model === 'auto') {
             const event = new CustomEvent("change_prompt_chunk", {
